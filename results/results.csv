@@ -1,1 +1,5 @@
 algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms
+genetic,flat1000_50_0,1000,245000,521,,7694.670
+genetic,fpsol2.i.1,496,11654,253,,418.415
+genetic,flat1000_50_0,1000,245000,521,,7709.539
+genetic,flat1000_50_0,1000,245000,124,,130926.753

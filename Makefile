@@ -17,6 +17,13 @@ OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
 .PHONY: all clean run-genetic
 
+GRAPH ?= dimacs/myciel6.col
+GRAPH_PATH := scripts/datasets/$(GRAPH)
+GRAPH_FILE := $(notdir $(GRAPH))
+GRAPH_NAME := $(basename $(GRAPH_FILE))
+OUTPUT ?= results/raw/$(GRAPH_NAME)_genetic.col
+RESULTS ?= results/results.csv
+
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
@@ -29,10 +36,10 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 run-genetic: $(TARGET)
 	$(TARGET) --algorithm genetic \
-	    --input scripts/datasets/dimacs/myciel6.col \
-	    --output results/raw/myciel6_genetic.col \
-	    --results results/results.csv \
-	    --graph-name myciel6
+	    --input $(GRAPH_PATH) \
+	    --output $(OUTPUT) \
+	    --results $(RESULTS) \
+	    --graph-name $(GRAPH_NAME)
 
 clean:
 	rm -rf $(BUILD_DIR)
