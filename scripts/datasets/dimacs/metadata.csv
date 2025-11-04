@@ -1,0 +1,8 @@
+graph_name,source,vertices,edges,density,known_optimal,path,graph_type,notes
+fpsol2.i.1.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/fpsol2.i.1.col,le450_15a,Unknown source
+fpsol2.i.2.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/fpsol2.i.2.col,le450_15a,Unknown source
+fpsol2.i.3.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/fpsol2.i.3.col,le450_15a,Unknown source
+inithx.i.1.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/inithx.i.1.col,le450_15a,Unknown source
+inithx.i.2.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/inithx.i.2.col,le450_15a,Unknown source
+inithx.i.3.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/inithx.i.3.col,le450_15a,Unknown source
+latin_square_10.col,le450_15a,900,307350,0.759733,,/home/rachitmehta/workspace/coursework/sem3/AAD/project/graph-colouring/scripts/datsets/dimacs/latin_square_10.col,le450_15a,Unknown source
