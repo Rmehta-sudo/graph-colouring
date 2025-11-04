@@ -22,6 +22,9 @@ Every algorithm executable must follow **this exact command-line format**:
 The input file will follow the **DIMACS-style format**:
 
 ```
+c some comments
+c some comments 
+...
 p edge <num_vertices> <num_edges>
 e <u1> <v1>
 e <u2> <v2>
@@ -32,6 +35,9 @@ e <um> <vm>
 Example:
 
 ```
+c some comments
+c some comments 
+...
 p edge 5 4
 e 1 2
 e 2 3

@@ -111,11 +111,21 @@ def build_bipartite(rng: random.Random, n: int) -> nx.Graph:
 
 
 def build_planar(rng: random.Random, n: int) -> nx.Graph:
-	# Approximate planar graphs using geometric graphs in the unit square.
-	radius = rng.uniform(0.1, 0.25)
-	graph = nx.random_geometric_graph(n, radius, seed=rng.randint(0, 1_000_000))
-	graph = nx.Graph(graph)
-	return ensure_connected(graph)
+	graph = nx.random_tree(n, seed=rng.randint(0, 1_000_000))
+	max_edges = max(0, 3 * n - 6)
+	target_edges = min(max_edges, graph.number_of_edges() + n)
+	attempts = 0
+	while graph.number_of_edges() < target_edges and attempts < 10 * n:
+		u = rng.randrange(n)
+		v = rng.randrange(n)
+		if u == v or graph.has_edge(u, v):
+			continue
+		graph.add_edge(u, v)
+		planar, _ = nx.check_planarity(graph)
+		if not planar:
+			graph.remove_edge(u, v)
+		attempts += 1
+	return graph
 
 
 def build_tree(rng: random.Random, n: int) -> nx.Graph:

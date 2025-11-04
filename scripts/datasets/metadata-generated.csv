@@ -1,0 +1,56 @@
+graph_name,source,vertices,edges,density,known_optimal,path,graph_type,notes
+bipartite_704_1.col,generated,704,30226,0.122147,,datasets/generated/bipartite_704_1.col,bipartite,Random bipartite
+bipartite_278_2.col,generated,278,2295,0.059606,,datasets/generated/bipartite_278_2.col,bipartite,Random bipartite
+bipartite_963_3.col,generated,963,50450,0.108916,,datasets/generated/bipartite_963_3.col,bipartite,Random bipartite
+bipartite_80_4.col,generated,80,222,0.070253,,datasets/generated/bipartite_80_4.col,bipartite,Random bipartite
+bipartite_77_5.col,generated,77,363,0.124060,,datasets/generated/bipartite_77_5.col,bipartite,Random bipartite
+planar_329_1.col,generated,329,515,0.009545,,datasets/generated/planar_329_1.col,planar,Random planar
+planar_261_2.col,generated,261,430,0.012673,,datasets/generated/planar_261_2.col,planar,Random planar
+planar_420_3.col,generated,420,652,0.007410,,datasets/generated/planar_420_3.col,planar,Random planar
+planar_309_4.col,generated,309,492,0.010339,,datasets/generated/planar_309_4.col,planar,Random planar
+planar_161_5.col,generated,161,295,0.022904,,datasets/generated/planar_161_5.col,planar,Random planar
+tree_238_1.col,generated,238,237,0.008403,,datasets/generated/tree_238_1.col,tree,Uniform random tree
+tree_505_2.col,generated,505,504,0.003960,,datasets/generated/tree_505_2.col,tree,Uniform random tree
+tree_862_3.col,generated,862,861,0.002320,,datasets/generated/tree_862_3.col,tree,Uniform random tree
+tree_275_4.col,generated,275,274,0.007273,,datasets/generated/tree_275_4.col,tree,Uniform random tree
+tree_958_5.col,generated,958,957,0.002088,,datasets/generated/tree_958_5.col,tree,Uniform random tree
+grid_360_1.col,generated,360,682,0.010554,,datasets/generated/grid_360_1.col,grid,2D grid
+grid_676_2.col,generated,676,1300,0.005698,,datasets/generated/grid_676_2.col,grid,2D grid
+grid_2070_3.col,generated,2070,4049,0.001891,,datasets/generated/grid_2070_3.col,grid,2D grid
+grid_841_4.col,generated,841,1624,0.004598,,datasets/generated/grid_841_4.col,grid,2D grid
+grid_1225_5.col,generated,1225,2380,0.003175,,datasets/generated/grid_1225_5.col,grid,2D grid
+erdos_renyi_747_1.col,generated,747,53227,0.191030,,datasets/generated/erdos_renyi_747_1.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_1754_2.col,generated,1754,286515,0.186366,,datasets/generated/erdos_renyi_1754_2.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_1808_3.col,generated,1808,170826,0.104575,,datasets/generated/erdos_renyi_1808_3.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_743_4.col,generated,743,52439,0.190236,,datasets/generated/erdos_renyi_743_4.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_1356_5.col,generated,1356,110455,0.120231,,datasets/generated/erdos_renyi_1356_5.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_632_6.col,generated,632,25733,0.129055,,datasets/generated/erdos_renyi_632_6.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_701_7.col,generated,701,34130,0.139107,,datasets/generated/erdos_renyi_701_7.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_437_8.col,generated,437,8504,0.089266,,datasets/generated/erdos_renyi_437_8.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_1283_9.col,generated,1283,76751,0.093325,,datasets/generated/erdos_renyi_1283_9.col,erdos_renyi,Erdos-Renyi
+erdos_renyi_1800_10.col,generated,1800,110682,0.068360,,datasets/generated/erdos_renyi_1800_10.col,erdos_renyi,Erdos-Renyi
+barabasi_albert_933_1.col,generated,933,4640,0.010672,,datasets/generated/barabasi_albert_933_1.col,barabasi_albert,Scale-free
+barabasi_albert_382_2.col,generated,382,1885,0.025903,,datasets/generated/barabasi_albert_382_2.col,barabasi_albert,Scale-free
+barabasi_albert_111_3.col,generated,111,530,0.086814,,datasets/generated/barabasi_albert_111_3.col,barabasi_albert,Scale-free
+barabasi_albert_1284_4.col,generated,1284,6395,0.007764,,datasets/generated/barabasi_albert_1284_4.col,barabasi_albert,Scale-free
+barabasi_albert_1262_5.col,generated,1262,6285,0.007899,,datasets/generated/barabasi_albert_1262_5.col,barabasi_albert,Scale-free
+barabasi_albert_769_6.col,generated,769,3820,0.012936,,datasets/generated/barabasi_albert_769_6.col,barabasi_albert,Scale-free
+barabasi_albert_1193_7.col,generated,1193,5940,0.008354,,datasets/generated/barabasi_albert_1193_7.col,barabasi_albert,Scale-free
+barabasi_albert_783_8.col,generated,783,3890,0.012706,,datasets/generated/barabasi_albert_783_8.col,barabasi_albert,Scale-free
+barabasi_albert_324_9.col,generated,324,1595,0.030482,,datasets/generated/barabasi_albert_324_9.col,barabasi_albert,Scale-free
+barabasi_albert_1776_10.col,generated,1776,8855,0.005618,,datasets/generated/barabasi_albert_1776_10.col,barabasi_albert,Scale-free
+watts_strogatz_155_1.col,generated,155,1085,0.090909,,datasets/generated/watts_strogatz_155_1.col,watts_strogatz,Small-world
+watts_strogatz_229_2.col,generated,229,2519,0.096491,,datasets/generated/watts_strogatz_229_2.col,watts_strogatz,Small-world
+watts_strogatz_527_3.col,generated,527,13702,0.098859,,datasets/generated/watts_strogatz_527_3.col,watts_strogatz,Small-world
+watts_strogatz_711_4.col,generated,711,24885,0.098592,,datasets/generated/watts_strogatz_711_4.col,watts_strogatz,Small-world
+watts_strogatz_427_5.col,generated,427,8967,0.098592,,datasets/generated/watts_strogatz_427_5.col,watts_strogatz,Small-world
+watts_strogatz_551_6.col,generated,551,14877,0.098182,,datasets/generated/watts_strogatz_551_6.col,watts_strogatz,Small-world
+watts_strogatz_363_7.col,generated,363,6534,0.099448,,datasets/generated/watts_strogatz_363_7.col,watts_strogatz,Small-world
+watts_strogatz_987_8.col,generated,987,48363,0.099391,,datasets/generated/watts_strogatz_987_8.col,watts_strogatz,Small-world
+watts_strogatz_689_9.col,generated,689,23426,0.098837,,datasets/generated/watts_strogatz_689_9.col,watts_strogatz,Small-world
+watts_strogatz_989_10.col,generated,989,48461,0.099190,,datasets/generated/watts_strogatz_989_10.col,watts_strogatz,Small-world
+complete_10_1.col,generated,10,45,1.000000,,datasets/generated/complete_10_1.col,complete,Complete graph
+complete_33_2.col,generated,33,528,1.000000,,datasets/generated/complete_33_2.col,complete,Complete graph
+complete_28_3.col,generated,28,378,1.000000,,datasets/generated/complete_28_3.col,complete,Complete graph
+complete_35_4.col,generated,35,595,1.000000,,datasets/generated/complete_35_4.col,complete,Complete graph
+complete_47_5.col,generated,47,1081,1.000000,,datasets/generated/complete_47_5.col,complete,Complete graph

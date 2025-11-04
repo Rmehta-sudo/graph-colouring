@@ -1,6 +1,0 @@
-graph_name,source,vertices,edges,density,known_optimal,path,graph_type,notes
-bipartite_704_1.col,generated,704,30226,0.122147,,datasets/generated/bipartite_704_1.col,bipartite,Random bipartite
-bipartite_278_2.col,generated,278,2295,0.059606,,datasets/generated/bipartite_278_2.col,bipartite,Random bipartite
-bipartite_963_3.col,generated,963,50450,0.108916,,datasets/generated/bipartite_963_3.col,bipartite,Random bipartite
-bipartite_80_4.col,generated,80,222,0.070253,,datasets/generated/bipartite_80_4.col,bipartite,Random bipartite
-bipartite_77_5.col,generated,77,363,0.124060,,datasets/generated/bipartite_77_5.col,bipartite,Random bipartite
