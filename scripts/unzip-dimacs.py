@@ -5,10 +5,10 @@ import shutil
 # --- Configuration ---
 
 # The folder where your .zip files are located
-SOURCE_DIR = "datasets/dimacs-zip-files"
+SOURCE_DIR = "datasets/network-repo/dimacs-zip-files"
 
 # The folder where you want the .mtx files to go
-TARGET_DIR = "datasets/dimacs"
+TARGET_DIR = "datasets/network-repo/dimacs"
 
 # ---------------------
 
