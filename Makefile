@@ -11,11 +11,15 @@ SOURCES := \
 	$(SRC_DIR)/io/graph_loader.cpp \
 	$(SRC_DIR)/io/graph_writer.cpp \
 	$(SRC_DIR)/io/results_logger.cpp \
-	$(SRC_DIR)/algorithms/genetic.cpp
+	$(SRC_DIR)/algorithms/genetic.cpp \
+	$(SRC_DIR)/algorithms/welsh_powell.cpp \
+	$(SRC_DIR)/algorithms/dsatur.cpp \
+	$(SRC_DIR)/algorithms/simulated_annealing.cpp \
+	$(SRC_DIR)/algorithms/exact_solver.cpp
 
 OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
-.PHONY: all clean run-genetic
+.PHONY: all clean run-genetic run-welsh run-dsatur run-exact run-sa
 
 GRAPH ?= dimacs/myciel6.col
 GRAPH_PATH := scripts/datasets/$(GRAPH)
@@ -38,6 +42,34 @@ run-genetic: $(TARGET)
 	$(TARGET) --algorithm genetic \
 	    --input $(GRAPH_PATH) \
 	    --output $(OUTPUT) \
+	    --results $(RESULTS) \
+	    --graph-name $(GRAPH_NAME)
+
+run-welsh: $(TARGET)
+	$(TARGET) --algorithm welsh_powell \
+	    --input $(GRAPH_PATH) \
+	    --output results/raw/$(GRAPH_NAME)_welsh_powell.col \
+	    --results $(RESULTS) \
+	    --graph-name $(GRAPH_NAME)
+
+run-dsatur: $(TARGET)
+	$(TARGET) --algorithm dsatur \
+	    --input $(GRAPH_PATH) \
+	    --output results/raw/$(GRAPH_NAME)_dsatur.col \
+	    --results $(RESULTS) \
+	    --graph-name $(GRAPH_NAME)
+
+run-sa: $(TARGET)
+	$(TARGET) --algorithm simulated_annealing \
+	    --input $(GRAPH_PATH) \
+	    --output results/raw/$(GRAPH_NAME)_simulated_annealing.col \
+	    --results $(RESULTS) \
+	    --graph-name $(GRAPH_NAME)
+
+run-exact: $(TARGET)
+	$(TARGET) --algorithm exact_solver \
+	    --input $(GRAPH_PATH) \
+	    --output results/raw/$(GRAPH_NAME)_exact_solver.col \
 	    --results $(RESULTS) \
 	    --graph-name $(GRAPH_NAME)
 

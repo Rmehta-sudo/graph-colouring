@@ -1,6 +1,10 @@
 #include "utils.h"
 
 #include "algorithms/genetic.h"
+#include "algorithms/welsh_powell.h"
+#include "algorithms/dsatur.h"
+#include "algorithms/simulated_annealing.h"
+#include "algorithms/exact_solver.h"
 
 #include <chrono>
 #include <filesystem>
@@ -88,21 +92,14 @@ Options parse_arguments(int argc, char **argv) {
 
 namespace {
 
-std::function<std::vector<int>(const Graph &)> make_stub(const std::string &name) {
-	return [name](const Graph &graph) -> std::vector<int> {
-		(void)graph;
-		throw std::logic_error("Algorithm not implemented: " + name);
-	};
-}
-
 std::unordered_map<std::string, std::function<std::vector<int>(const Graph &)>>
 build_algorithm_table() {
 	return {
-		{"welsh_powell", make_stub("welsh_powell")},
-		{"dsatur", make_stub("dsatur")},
-		{"simulated_annealing", make_stub("simulated_annealing")},
-	{"genetic", [](const Graph &graph) { return colour_with_genetic(graph); }},
-		{"exact_solver", make_stub("exact_solver")},
+		{"welsh_powell", [](const Graph &graph) { return colour_with_welsh_powell(graph); }},
+		{"dsatur", [](const Graph &graph) { return colour_with_dsatur(graph); }},
+		{"simulated_annealing", [](const Graph &graph) { return colour_with_simulated_annealing(graph); }},
+		{"genetic", [](const Graph &graph) { return colour_with_genetic(graph); }},
+		{"exact_solver", [](const Graph &graph) { return colour_with_exact(graph); }},
 	};
 }
 
