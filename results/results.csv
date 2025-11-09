@@ -22,6 +22,7 @@ dsatur,miles500,128,1170,20,,0.516
 exact_solver,miles500,128,1170,20,,0.660
 exact_solver,miles500,128,1170,20,,0.701
 exact_solver,david,87,406,11,,0.141
+
 welsh_powell,myciel6,95,755,8,,0.020
 welsh_powell,myciel3,11,20,4,,0.003
 welsh_powell,myciel4,23,71,5,,0.008
@@ -43,3 +44,4 @@ simulated_annealing,queen16_16,256,6320,24,,17.247
 simulated_annealing,flat1000_50_0,1000,245000,144,,1374.713
 simulated_annealing,k-12,12,66,12,,0.203
 simulated_annealing,myciel6,95,755,7,,1.987
+exact_solver,jean,80,254,10,,799.284
