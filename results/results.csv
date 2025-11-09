@@ -36,3 +36,10 @@ welsh_powell,DSJC500.9,500,112437,168,,3.521
 welsh_powell,flat1000_50_0,1000,245000,121,,4.676
 welsh_powell,flat1000_50_0,1000,245000,121,,4.667
 welsh_powell,flat300_28_0,300,21695,46,,0.381
+simulated_annealing,anna,138,493,11,,2.102
+simulated_annealing,david,87,406,11,,1.505
+simulated_annealing,flat300_20_0,300,21375,59,,83.550
+simulated_annealing,queen16_16,256,6320,24,,17.247
+simulated_annealing,flat1000_50_0,1000,245000,144,,1374.713
+simulated_annealing,k-12,12,66,12,,0.203
+simulated_annealing,myciel6,95,755,7,,1.987
