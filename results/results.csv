@@ -22,3 +22,17 @@ dsatur,miles500,128,1170,20,,0.516
 exact_solver,miles500,128,1170,20,,0.660
 exact_solver,miles500,128,1170,20,,0.701
 exact_solver,david,87,406,11,,0.141
+welsh_powell,myciel6,95,755,8,,0.020
+welsh_powell,myciel3,11,20,4,,0.003
+welsh_powell,myciel4,23,71,5,,0.008
+welsh_powell,myciel5,47,236,7,,0.009
+genetic,miles750,128,2113,31,,525.575
+dsatur,miles750,128,2113,31,,1.084
+welsh_powell,miles750,128,2113,32,,0.084
+welsh_powell,fpsol2.i.1,496,11654,65,,0.700
+welsh_powell,fpsol2.i.2,451,8691,30,,0.327
+welsh_powell,DSJC1000.1,1000,49629,30,,1.017
+welsh_powell,DSJC500.9,500,112437,168,,3.521
+welsh_powell,flat1000_50_0,1000,245000,121,,4.676
+welsh_powell,flat1000_50_0,1000,245000,121,,4.667
+welsh_powell,flat300_28_0,300,21695,46,,0.381
