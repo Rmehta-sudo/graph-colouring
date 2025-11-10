@@ -304,6 +304,14 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
 
     fig, ax = plt.subplots(figsize=(7,7))
     ax.set_axis_off()
+    
+    # Fix axis limits to prevent stretching
+    xs = [p[0] for p in pos]
+    ys = [p[1] for p in pos]
+    margin = 0.1
+    ax.set_xlim(min(xs) - margin, max(xs) + margin)
+    ax.set_ylim(min(ys) - margin, max(ys) + margin)
+    ax.set_aspect('equal', 'box')
 
     # Draw edges once
     if edges:
@@ -325,12 +333,14 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
         colours = [colour_to_rgba(c) for c in frames[frame_idx]]
         scat.set_color(colours)
         title.set_text(f"Iteration {frame_idx+1}/{len(frames)}")
+        fig.canvas.draw_idle()
 
     if manual:
         update(frame_index)
         def on_key(event):
             nonlocal frame_index
-            if event.key in ("enter", "return", "space", "right", "k"):
+            # Debug: print(f"Key pressed: '{event.key}'")
+            if event.key in ("enter", " ", "k", "right"):
                 if frame_index < len(frames) - 1:
                     frame_index += 1
                     update(frame_index)
@@ -340,7 +350,8 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
                         update(frame_index)
                     else:
                         plt.close(fig)
-            elif event.key in ("left", "h"):
+                        # sys.exit(0)
+            elif event.key in ("h", "left"):
                 if frame_index > 0:
                     frame_index -= 1
                     update(frame_index)
@@ -348,8 +359,9 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
                     if repeat:
                         frame_index = len(frames) - 1
                         update(frame_index)
-            elif event.key in ("q", "escape"):
-                plt.close(fig)
+            # elif event.key in ("q", "escape"):
+            #     plt.close(fig)
+            #     sys.exit(0)
         fig.canvas.mpl_connect('key_press_event', on_key)
         plt.show()
     else:
@@ -379,6 +391,14 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
         pos = spring_layout(list(n_vertices.values())[0], edges, seed)
     else:
         pos = circular_layout(list(n_vertices.values())[0])
+    
+    # Fix axis limits to prevent stretching
+    xs = [p[0] for p in pos]
+    ys = [p[1] for p in pos]
+    margin = 0.1
+    xlim = (min(xs) - margin, max(xs) + margin)
+    ylim = (min(ys) - margin, max(ys) + margin)
+    
     cols = 3
     rows = 2
     fig, axes = plt.subplots(rows, cols, figsize=(cols*4.0, rows*4.0))
@@ -391,6 +411,9 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
     for idx, algo in enumerate(algos):
         ax = axes_flat[idx]
         ax.set_axis_off()
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        ax.set_aspect('equal', 'box')
         if edges:
             edge_segments = [[pos[u], pos[v]] for u,v in edges]
             from matplotlib.collections import LineCollection
@@ -431,10 +454,12 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
                 colours = [colour_to_rgba(c) for c in frames[use_idx]]
                 scatters[algo].set_color(colours)
                 titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)}")
+            fig.canvas.draw_idle()
         update_all(frame_index)
         def on_key(event):
             nonlocal frame_index
-            if event.key in ("enter", "return", "space", "right", "k"):
+            # Debug: print(f"Key pressed: '{event.key}'")
+            if event.key in ("enter", " ", "k", "right"):
                 if frame_index < max_len - 1:
                     frame_index += 1
                     update_all(frame_index)
@@ -444,7 +469,7 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
                         update_all(frame_index)
                     else:
                         plt.close(fig)
-            elif event.key in ("left", "h"):
+            elif event.key in ("h", "left"):
                 if frame_index > 0:
                     frame_index -= 1
                     update_all(frame_index)
@@ -452,8 +477,8 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
                     if repeat:
                         frame_index = max_len - 1
                         update_all(frame_index)
-            elif event.key in ("q", "escape"):
-                plt.close(fig)
+            # elif event.key in ("q", "escape"):
+            #     plt.close(fig)
         fig.canvas.mpl_connect('key_press_event', on_key)
         plt.show()
     else:
