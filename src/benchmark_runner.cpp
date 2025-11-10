@@ -9,6 +9,8 @@
 #include <chrono>
 #include <filesystem>
 #include <functional>
+#include <fstream>
+#include <sstream>
 #include <iostream>
 #include <optional>
 #include <stdexcept>
@@ -28,6 +30,49 @@ struct Options {
 };
 
 namespace {
+// Try to read known optimal from metadata CSV if not provided.
+// Looks for scripts/datasets/metadata-dimacs.csv and matches by graph_name (with or without .col).
+std::optional<int> lookup_known_optimal_from_metadata(const std::string &graph_name) {
+	const std::vector<std::filesystem::path> candidates = {
+		std::filesystem::path("scripts/datasets/metadata-dimacs.csv"),
+		std::filesystem::path("scripts/datasets/metadata-generated.csv"),
+	};
+	const std::string with_ext = (graph_name.size() >= 4 && graph_name.substr(graph_name.size()-4)==".col")
+		? graph_name
+		: (graph_name + ".col");
+	for (const auto &path : candidates) {
+		if (!std::filesystem::exists(path)) continue;
+		std::ifstream in(path);
+		if (!in.is_open()) continue;
+		std::string header;
+		std::getline(in, header);
+		std::string line;
+		while (std::getline(in, line)) {
+			if (line.empty()) continue;
+			// naive CSV split (fields have no embedded commas in our metadata)
+			std::vector<std::string> fields;
+			std::stringstream ss(line);
+			std::string cell;
+			while (std::getline(ss, cell, ',')) fields.push_back(cell);
+			if (fields.empty()) continue;
+			// Expect: graph_name,source,vertices,edges,density,known_optimal,path,graph_type,notes
+			if (fields.size() < 6) continue;
+			const std::string &gname = fields[0];
+			const std::string &known = fields[5];
+			if (gname == graph_name || gname == with_ext) {
+				if (!known.empty()) {
+					try {
+						return std::stoi(known);
+					} catch (...) {
+						return std::nullopt;
+					}
+				}
+				return std::nullopt;
+			}
+		}
+	}
+	return std::nullopt;
+}
 
 std::optional<int> parse_optional_int(const std::string &value) {
 	if (value.empty()) {
@@ -150,7 +195,12 @@ int main(int argc, char **argv) {
 			result.vertex_count = graph.vertex_count;
 			result.edge_count = graph.edge_count;
 			result.color_count = count_colours(colours);
-			result.known_optimal = options.known_optimal;
+			// Prefer CLI-provided known optimal, else try metadata lookup
+			if (options.known_optimal.has_value()) {
+				result.known_optimal = options.known_optimal;
+			} else {
+				result.known_optimal = lookup_known_optimal_from_metadata(result.graph_name);
+			}
 			result.runtime_ms = runtime_ms;
 			append_result_csv(options.results_path, result);
 		}

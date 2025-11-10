@@ -19,7 +19,7 @@ SOURCES := \
 
 OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
-.PHONY: all clean run-genetic run-welsh run-dsatur run-exact run-sa
+.PHONY: all clean run-genetic run-welsh run-dsatur run-exact run-sa run-all-benchmarking
 
 GRAPH ?= dimacs/myciel6.col
 GRAPH_PATH := scripts/datasets/$(GRAPH)
@@ -72,6 +72,9 @@ run-exact: $(TARGET)
 	    --output results/raw/$(GRAPH_NAME)_exact_solver.col \
 	    --results $(RESULTS) \
 	    --graph-name $(GRAPH_NAME)
+
+run-all-benchmarking: $(TARGET)
+	python3 scripts/run_all_benchmarks.py --include-generated
 
 clean:
 	rm -rf $(BUILD_DIR)
