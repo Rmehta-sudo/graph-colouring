@@ -66,3 +66,14 @@ welsh_powell,jean,80,254,10,10,0.445
 genetic,jean,80,254,10,10,105.025
 simulated_annealing,jean,80,254,10,10,22.242
 exact_solver,jean,80,254,10,10,1119.947
+dsatur,k-12,12,66,12,,0.161
+welsh_powell,k-12,12,66,12,,0.104
+genetic,k-12,12,66,12,,27.455
+simulated_annealing,k-12,12,66,12,,0.392
+exact_solver,k-12,12,66,12,,0.321
+dsatur,tree_238_1,238,237,2,,3.415
+welsh_powell,tree_238_1,238,237,3,,3.646
+genetic,tree_238_1,238,237,3,,199.360
+simulated_annealing,tree_238_1,238,237,3,,33.352
+exact_solver,tree_238_1,238,237,2,,0.482
+welsh_powell,myciel3,11,20,4,4,0.164

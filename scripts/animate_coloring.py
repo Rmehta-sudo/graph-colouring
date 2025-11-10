@@ -44,6 +44,7 @@ from typing import List, Tuple, Dict
 import subprocess
 import math
 from itertools import combinations
+import time
 try:
     import networkx as nx  # optional, for better layout
 except Exception:
@@ -94,6 +95,12 @@ Manual stepping (advance on keypress):
     python3 scripts/animate_coloring.py --graph myciel6 --algo genetic --manual
     Keys: enter/space/k/right = next, left/h = back, q/escape = quit
 
+Animation timing:
+    --interval X        Seconds between frames for all algorithms (default 0.2)
+    --sa-interval X     Override interval for simulated_annealing (has many more iterations)
+    Example: python3 scripts/animate_coloring.py --graph myciel6 --algo simulated_annealing --sa-interval 0.01
+    Example: python3 scripts/animate_coloring.py --graph myciel6 --all-algos --sa-interval 0.05
+
 Genetic algorithm tuning (applies when --algo genetic):
     --population-size N   (default 64)
     --generations N       (default 500)
@@ -131,6 +138,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--algo", required=not all_algos_mode, choices=["dsatur", "welsh_powell", "genetic", "simulated_annealing", "exact_solver"], help="Snapshot-enabled algorithm (not required with --all-algos)")
     p.add_argument("--interval", type=float, default=0.2, help="Seconds between frames (default 0.2)")
+    p.add_argument("--sa-interval", type=float, help="Override interval specifically for simulated_annealing (has many more iterations)")
     p.add_argument("--manual", action="store_true", help="Manual stepping mode: next (enter/space/k/right), back (left/h), quit (q/escape).")
     p.add_argument("--repeat", action="store_true", help="Loop animation indefinitely")
     p.add_argument("--layout", choices=["spring", "circular"], default="spring", help="Layout strategy (default spring; circular fallback)")
@@ -360,10 +368,12 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
         plt.show()
 
 
-def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, repeat: bool, layout: str, seed: int, edges: List[Tuple[int,int]], manual: bool):
+def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_interval: float | None,
+                  repeat: bool, layout: str, seed: int, edges: List[Tuple[int,int]], manual: bool):
     algos = list(frames_map.keys())
     max_len = max(len(frames) for frames in frames_map.values())
     n_vertices = {a: len(frames_map[a][0]) for a in algos}
+    
     # Layout positions (shared across all assuming same graph)
     if layout == 'spring':
         pos = spring_layout(list(n_vertices.values())[0], edges, seed)
@@ -395,53 +405,96 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, repea
             return '#cccccc'
         return PALETTE[c % len(PALETTE)]
 
-    frame_index = 0
+    # Per-algo frame indices and intervals
+    frame_indices = {algo: 0 for algo in algos}
+    now = time.time()
+    last_update = {algo: now for algo in algos}
+    # per-algo interval: SA gets sa_interval if provided, else falls back to interval
+    per_algo_interval = {algo: (sa_interval if (algo == "simulated_annealing" and sa_interval is not None) else interval) for algo in algos}
 
-    def update(idx: int):
-        for algo in algos:
-            frames = frames_map[algo]
-            use_idx = min(idx, len(frames)-1)
-            colours = [colour_to_rgba(c) for c in frames[use_idx]]
-            scatters[algo].set_color(colours)
-            titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)}")
+    def update_algo(algo: str):
+        idx = frame_indices[algo]
+        frames = frames_map[algo]
+        use_idx = min(idx, len(frames)-1)
+        colours = [colour_to_rgba(c) for c in frames[use_idx]]
+        scatters[algo].set_color(colours)
+        titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)}")
 
     if manual:
-        update(frame_index)
+        # Manual stepping advances all algos together using max_len
+        frame_index = 0
+        def update_all(idx: int):
+            for algo in algos:
+                # clamp to each algo's length
+                frames = frames_map[algo]
+                use_idx = min(idx, len(frames)-1)
+                colours = [colour_to_rgba(c) for c in frames[use_idx]]
+                scatters[algo].set_color(colours)
+                titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)}")
+        update_all(frame_index)
         def on_key(event):
             nonlocal frame_index
             if event.key in ("enter", "return", "space", "right", "k"):
                 if frame_index < max_len - 1:
                     frame_index += 1
-                    update(frame_index)
+                    update_all(frame_index)
                 else:
                     if repeat:
                         frame_index = 0
-                        update(frame_index)
+                        update_all(frame_index)
                     else:
                         plt.close(fig)
             elif event.key in ("left", "h"):
                 if frame_index > 0:
                     frame_index -= 1
-                    update(frame_index)
+                    update_all(frame_index)
                 else:
                     if repeat:
                         frame_index = max_len - 1
-                        update(frame_index)
+                        update_all(frame_index)
             elif event.key in ("q", "escape"):
                 plt.close(fig)
         fig.canvas.mpl_connect('key_press_event', on_key)
         plt.show()
     else:
         try:
+            # Main loop: each algo advances when its interval has elapsed
             while True:
-                update(frame_index)
-                plt.pause(interval)
-                frame_index += 1
-                if frame_index >= max_len:
-                    if repeat:
-                        frame_index = 0
+                t = time.time()
+                # advance each algo independently if its interval elapsed
+                any_changed = False
+                for algo in algos:
+                    if len(frames_map[algo]) == 0:
+                        continue
+                    if per_algo_interval[algo] <= 0:
+                        # guard: non-positive interval treated as immediate advance each iteration
+                        should_advance = True
                     else:
+                        should_advance = (t - last_update[algo]) >= per_algo_interval[algo]
+                    if should_advance:
+                        last_update[algo] = t
+                        # advance index
+                        if frame_indices[algo] < len(frames_map[algo]) - 1:
+                            frame_indices[algo] += 1
+                        else:
+                            # reached end for this algo
+                            if repeat:
+                                frame_indices[algo] = 0
+                            else:
+                                # clamp to last frame (do not wrap)
+                                frame_indices[algo] = len(frames_map[algo]) - 1
+                        update_algo(algo)
+                        any_changed = True
+                # If nothing changed (intervals small), still sleep a tiny bit to avoid busy loop
+                if not any_changed:
+                    time.sleep(min(0.01, max(0.001, min(per_algo_interval.values()) / 10.0)))
+                # Determine termination condition: if none are set to repeat and all reached their final frames, break
+                if not repeat:
+                    all_done = all(frame_indices[algo] >= (len(frames_map[algo]) - 1) for algo in algos)
+                    if all_done:
                         break
+                # let matplotlib update its event loop and rendering
+                plt.pause(0.001)
         except KeyboardInterrupt:
             pass
         plt.show()
@@ -452,6 +505,7 @@ def main() -> int:
     graph_file, graph_name = resolve_graph_path_and_name(args.graph)
     vertex_count, edges = read_graph(graph_file)
     all_algos_mode = getattr(args, 'all_algos', False)
+    
     if all_algos_mode:
         all_algos = ["dsatur", "welsh_powell", "genetic", "simulated_annealing", "exact_solver"]
         frames_map: Dict[str, List[List[int]]] = {}
@@ -463,14 +517,17 @@ def main() -> int:
         for algo, frames in frames_map.items():
             if len(frames[0]) != vertex_count:
                 print(f"Warning: {algo} snapshot length {len(frames[0])} != graph vertex_count {vertex_count}")
-        animate_multi(frames_map, args.interval, args.repeat, args.layout, args.seed, edges, args.manual)
+        # In multi-algo mode: pass both intervals; animate_multi will use sa_interval for SA only
+        animate_multi(frames_map, args.interval, args.sa_interval, args.repeat, args.layout, args.seed, edges, args.manual)
     else:
         if not args.skip_run:
             generate_snapshots_if_needed(args.algo, graph_name, graph_file, args)
         frames = load_snapshots(args.algo, graph_name)
         if len(frames[0]) != vertex_count:
             print(f"Warning: snapshot vector length {len(frames[0])} differs from vertex_count {vertex_count}. Using snapshot length.")
-        animate(frames, args.interval, args.repeat, args.layout, args.seed, edges, args.manual)
+        # Use sa_interval only for simulated_annealing, otherwise use regular interval
+        interval = args.sa_interval if (args.algo == "simulated_annealing" and args.sa_interval) else args.interval
+        animate(frames, interval, args.repeat, args.layout, args.seed, edges, args.manual)
     return 0
 
 if __name__ == "__main__":
