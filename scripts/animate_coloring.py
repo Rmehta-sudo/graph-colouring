@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""Animate colouring snapshots for a given graph and algorithm.
+
+Usage:
+  python3 scripts/animate_coloring.py --graph myciel6 --algo dsatur --interval 0.2
+  python3 scripts/animate_coloring.py --graph myciel6 --algo welsh_powell --interval 0.1
+
+Requires that you have already run benchmark_runner with --save-snapshots for the
+specified algorithm and graph, creating
+  snapshots-colouring/<algo>-<graph>-snnapshots.txt
+
+The script will:
+  1. Locate the DIMACS graph file under scripts/datasets/dimacs or generated.
+  2. Load vertex count for layout sizing.
+  3. Read snapshots file (space-separated colour vectors per iteration).
+  4. Display an animation (matplotlib) updating vertex colours each frame.
+
+Colours are mapped to a qualitative palette; -1 appears as light gray.
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from typing import List, Tuple
+import subprocess
+import math
+from itertools import combinations
+try:
+    import networkx as nx  # optional, for better layout
+except Exception:
+    nx = None  # fallback handled
+
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as mcolors
+except Exception as e:
+    # Friendly message for common NumPy/Matplotlib ABI issues
+    import sys as _sys
+    print("Failed to import matplotlib. This is often due to a NumPy/Matplotlib version mismatch.", file=_sys.stderr)
+    print("Hint: Use a consistent environment (e.g., conda) and install compatible versions.", file=_sys.stderr)
+    print("  Options:", file=_sys.stderr)
+    print("   - conda:  conda install 'matplotlib>=3.9' 'numpy>=2.0'  (same channel)", file=_sys.stderr)
+    print("   - or:     conda install 'numpy<2'  (to match older matplotlib)", file=_sys.stderr)
+    print("   - pip:    pip install --upgrade 'matplotlib>=3.9'  OR  pip install 'numpy<2'", file=_sys.stderr)
+    raise
+
+ROOT = Path(__file__).resolve().parents[1]
+SNAP_DIR = ROOT / "snapshots-colouring"
+DATASETS_DIR = ROOT / "scripts" / "datasets"
+DIMACS_DIR = DATASETS_DIR / "dimacs"
+GENERATED_DIR = DATASETS_DIR / "generated"
+BENCH = ROOT / "build" / "benchmark_runner"
+
+PALETTE = list(mcolors.TABLEAU_COLORS.values()) + [
+    '#e6194b','#3cb44b','#ffe119','#4363d8','#f58231','#911eb4','#46f0f0','#f032e6','#bcf60c','#fabebe',
+    '#008080','#e6beff','#9a6324','#fffac8','#800000','#aaffc3','#808000','#ffd8b1','#000075','#808080'
+]
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Run C++ colouring (producing snapshots) and animate with graph edges.")
+    p.add_argument(
+        "--graph",
+        required=True,
+        help=(
+            "Graph id: bare name (myciel6) or path relative to scripts/datasets (e.g. dimacs/myciel6.col, generated/flat300_20_0.col) or absolute path."
+        ),
+    )
+    p.add_argument("--algo", required=True, choices=["dsatur", "welsh_powell"], help="Algorithm (snapshots supported)")
+    p.add_argument("--interval", type=float, default=0.2, help="Seconds between frames (default 0.2)")
+    p.add_argument("--repeat", action="store_true", help="Loop animation indefinitely")
+    p.add_argument("--layout", choices=["spring", "circular"], default="spring", help="Layout strategy (default spring; circular fallback)")
+    p.add_argument("--seed", type=int, default=42, help="Random seed for layout (spring)")
+    p.add_argument("--skip-run", action="store_true", help="Assume snapshots already exist; don't invoke C++ binary")
+    return p.parse_args()
+
+
+def resolve_graph_path_and_name(arg: str) -> tuple[Path, str]:
+    p = Path(arg)
+    # Absolute path
+    if p.is_absolute():
+        if p.exists():
+            return p, p.stem
+        if p.suffix != ".col":
+            q = p.with_suffix(".col")
+            if q.exists():
+                return q, q.stem
+        raise FileNotFoundError(f"Graph file not found: {p}")
+    # Relative under datasets
+    rel = DATASETS_DIR / p
+    if p.parent != Path('.'):
+        if rel.exists():
+            return rel, rel.stem
+        if rel.suffix != ".col":
+            rel_col = rel.with_suffix(".col")
+            if rel_col.exists():
+                return rel_col, rel_col.stem
+        raise FileNotFoundError(f"Graph not found under scripts/datasets/: {arg}")
+    # Bare name
+    name = p.stem if p.suffix == ".col" else str(p)
+    for c in (DIMACS_DIR / f"{name}.col", GENERATED_DIR / f"{name}.col"):
+        if c.exists():
+            return c, c.stem
+    raise FileNotFoundError(f"Graph '{arg}' not found in dimacs/ or generated/")
+
+
+def read_graph(path: Path) -> Tuple[int, List[Tuple[int,int]]]:
+    """Return (vertex_count, edges) with 0-based vertices."""
+    v_count = 0
+    edges: List[Tuple[int,int]] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if not line or line[0] in ('c','%','#'):
+                continue
+            if line.startswith('p '):
+                parts = line.strip().split()
+                if len(parts) >= 4 and parts[1] == 'edge':
+                    try:
+                        v_count = int(parts[2])
+                    except Exception:
+                        pass
+            elif line.startswith('e '):
+                parts = line.strip().split()
+                if len(parts) >= 3:
+                    try:
+                        u = int(parts[1]) - 1
+                        v = int(parts[2]) - 1
+                        if u != v:
+                            edges.append((u,v))
+                            v_count = max(v_count, u+1, v+1)
+                    except Exception:
+                        continue
+    return v_count, edges
+
+
+def load_snapshots(algo: str, graph_name: str) -> List[List[int]]:
+    snap_path = SNAP_DIR / f"{algo}-{graph_name}-snnapshots.txt"
+    if not snap_path.exists():
+        raise FileNotFoundError(f"Snapshots file not found: {snap_path}. Run benchmark_runner with --save-snapshots first.")
+    frames: List[List[int]] = []
+    with snap_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            try:
+                frame = [int(x) for x in parts]
+                frames.append(frame)
+            except Exception:
+                continue
+    if not frames:
+        raise RuntimeError(f"No frames parsed from {snap_path}")
+    return frames
+
+
+def generate_snapshots_if_needed(algo: str, graph_name: str, graph_file: Path) -> None:
+    """Run the C++ benchmark runner to produce snapshot file if missing or empty."""
+    snap_path = SNAP_DIR / f"{algo}-{graph_name}-snnapshots.txt"
+    if snap_path.exists() and snap_path.stat().st_size > 0:
+        return
+    if not BENCH.exists():
+        raise FileNotFoundError(f"Runner binary not found at {BENCH}. Build it first (make all).")
+    SNAP_DIR.mkdir(parents=True, exist_ok=True)
+    # Ensure raw results dir exists
+    (ROOT / "results" / "raw").mkdir(parents=True, exist_ok=True)
+    out_col = ROOT / "results" / "raw" / f"{graph_name}_{algo}.col"
+    results_csv = ROOT / "results" / "results.csv"
+    cmd = [
+        str(BENCH),
+        "--algorithm", algo,
+        "--input", str(graph_file),
+        "--output", str(out_col),
+        "--results", str(results_csv),
+    "--graph-name", graph_name,
+        "--save-snapshots",
+    ]
+    print("[animate] Running:", " ".join(cmd))
+    completed = subprocess.run(cmd, cwd=ROOT)
+    if completed.returncode != 0:
+        raise RuntimeError(f"benchmark_runner exited with code {completed.returncode}")
+    if not snap_path.exists() or snap_path.stat().st_size == 0:
+        raise RuntimeError(f"Snapshot file not created: {snap_path}")
+
+
+def circular_layout(n: int) -> List[Tuple[float,float]]:
+    angle_step = 2 * math.pi / n if n else 0
+    return [(math.cos(i * angle_step), math.sin(i * angle_step)) for i in range(n)]
+
+def spring_layout(n: int, edges: List[Tuple[int,int]], seed: int) -> List[Tuple[float,float]]:
+    if nx is None:
+        return circular_layout(n)
+    G = nx.Graph()
+    G.add_nodes_from(range(n))
+    G.add_edges_from(edges)
+    pos = nx.spring_layout(G, seed=seed)
+    # Normalize positions to roughly unit disk
+    xs = [pos[i][0] for i in range(n)]
+    ys = [pos[i][1] for i in range(n)]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    span_x = max_x - min_x or 1.0
+    span_y = max_y - min_y or 1.0
+    return [((pos[i][0]-min_x)/span_x*2-1, (pos[i][1]-min_y)/span_y*2-1) for i in range(n)]
+
+
+def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str, seed: int, edges: List[Tuple[int,int]]):
+    n = len(frames[0])
+    if layout == 'spring':
+        pos = spring_layout(n, edges, seed)
+    else:
+        pos = circular_layout(n)
+
+    fig, ax = plt.subplots(figsize=(7,7))
+    ax.set_axis_off()
+
+    # Draw edges once
+    if edges:
+        edge_segments = [ [pos[u], pos[v]] for u,v in edges ]
+        from matplotlib.collections import LineCollection
+        lc = LineCollection(edge_segments, colors='#999999', linewidths=1, zorder=1)
+        ax.add_collection(lc)
+
+    scat = ax.scatter([p[0] for p in pos], [p[1] for p in pos], c=['#cccccc']*n, s=320, edgecolors='black', linewidths=0.7, zorder=2)
+    title = ax.set_title("Frame 0")
+
+    def colour_to_rgba(c: int) -> str:
+        if c < 0:
+            return '#cccccc'
+        return PALETTE[c % len(PALETTE)]
+
+    frame_index = 0
+    def update(frame_idx: int):
+        colours = [colour_to_rgba(c) for c in frames[frame_idx]]
+        scat.set_color(colours)
+        title.set_text(f"Iteration {frame_idx+1}/{len(frames)}")
+
+    try:
+        while True:
+            update(frame_index)
+            plt.pause(interval)
+            frame_index += 1
+            if frame_index >= len(frames):
+                if repeat:
+                    frame_index = 0
+                else:
+                    break
+    except KeyboardInterrupt:
+        pass
+    plt.show()
+
+
+def main() -> int:
+    args = parse_args()
+    graph_file, graph_name = resolve_graph_path_and_name(args.graph)
+    if not args.skip_run:
+        generate_snapshots_if_needed(args.algo, graph_name, graph_file)
+    vertex_count, edges = read_graph(graph_file)
+    frames = load_snapshots(args.algo, graph_name)
+    if len(frames[0]) != vertex_count:
+        print(f"Warning: snapshot vector length {len(frames[0])} differs from vertex_count {vertex_count}. Using snapshot length.")
+    animate(frames, args.interval, args.repeat, args.layout, args.seed, edges)
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

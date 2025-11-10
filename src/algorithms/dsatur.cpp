@@ -2,7 +2,9 @@
 #include "dsatur.h"
 
 #include <algorithm>
+#include <fstream>
 #include <set>
+#include <stdexcept>
 #include <unordered_set>
 #include <vector>
 
@@ -81,6 +83,75 @@ std::vector<int> colour_with_dsatur(const Graph &graph) {
 				Q.insert(NodeInfo{sat[nb], deg[nb], nb});
 			}
 		}
+	}
+
+	return colour;
+}
+
+std::vector<int> colour_with_dsatur_snapshots(const Graph &graph, const std::string &snapshots_path) {
+	const int n = graph.vertex_count;
+	if (n == 0) return {};
+
+	std::vector<int> colour(n, -1);
+	std::vector<int> deg(n, 0);
+	std::vector<int> sat(n, 0);
+	std::vector<std::unordered_set<int>> nb_colours(n);
+
+	for (int u = 0; u < n; ++u) deg[u] = static_cast<int>(graph.adjacency_list[u].size());
+
+	std::set<NodeInfo, MaxSatCmp> Q;
+	for (int u = 0; u < n; ++u) {
+		Q.insert(NodeInfo{0, deg[u], u});
+	}
+
+	std::vector<char> used;
+
+	std::ofstream out(snapshots_path);
+	if (!out.is_open()) {
+		throw std::runtime_error("Failed to open DSATUR snapshots file: " + snapshots_path);
+	}
+
+	auto write_snapshot = [&](){
+		for (int i = 0; i < n; ++i) {
+			if (i) out << ' ';
+			out << colour[i];
+		}
+		out << '\n';
+	};
+
+	while (!Q.empty()) {
+		int u = Q.begin()->v;
+		Q.erase(Q.begin());
+
+		for (int nb : graph.adjacency_list[u]) {
+			int c = colour[nb];
+			if (c >= 0) {
+				if (c >= static_cast<int>(used.size())) used.resize(c + 1, 0);
+				used[c] = 1;
+			}
+		}
+
+		int c = 0;
+		while (c < static_cast<int>(used.size()) && used[c]) ++c;
+		colour[u] = c;
+
+		for (int nb : graph.adjacency_list[u]) {
+			int nc = colour[nb];
+			if (nc >= 0 && nc < static_cast<int>(used.size())) used[nc] = 0;
+		}
+
+		for (int nb : graph.adjacency_list[u]) {
+			if (colour[nb] == -1) {
+				Q.erase(NodeInfo{sat[nb], deg[nb], nb});
+				if (nb_colours[nb].insert(c).second) {
+					++sat[nb];
+				}
+				if (deg[nb] > 0) --deg[nb];
+				Q.insert(NodeInfo{sat[nb], deg[nb], nb});
+			}
+		}
+
+		write_snapshot();
 	}
 
 	return colour;

@@ -27,6 +27,7 @@ GRAPH_FILE := $(notdir $(GRAPH))
 GRAPH_NAME := $(basename $(GRAPH_FILE))
 OUTPUT ?= results/raw/$(GRAPH_NAME)_genetic.col
 RESULTS ?= results/results.csv
+SNAPSHOTS ?= 0
 
 all: $(TARGET)
 
@@ -50,14 +51,16 @@ run-welsh: $(TARGET)
 	    --input $(GRAPH_PATH) \
 	    --output results/raw/$(GRAPH_NAME)_welsh_powell.col \
 	    --results $(RESULTS) \
-	    --graph-name $(GRAPH_NAME)
+	    --graph-name $(GRAPH_NAME) \
+	    $(if $(filter 1 true TRUE yes YES,$(SNAPSHOTS)),--save-snapshots,)
 
 run-dsatur: $(TARGET)
 	$(TARGET) --algorithm dsatur \
 	    --input $(GRAPH_PATH) \
 	    --output results/raw/$(GRAPH_NAME)_dsatur.col \
 	    --results $(RESULTS) \
-	    --graph-name $(GRAPH_NAME)
+	    --graph-name $(GRAPH_NAME) \
+	    $(if $(filter 1 true TRUE yes YES,$(SNAPSHOTS)),--save-snapshots,)
 
 run-sa: $(TARGET)
 	$(TARGET) --algorithm simulated_annealing \

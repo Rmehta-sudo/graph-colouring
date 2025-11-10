@@ -46,3 +46,8 @@ simulated_annealing,myciel6,95,755,7,,1.987
 exact_solver,jean,80,254,10,,799.284
 simulated_annealing,queen9_9,81,1056,13,,0.710
 simulated_annealing,queen9_9,81,1056,13,10,0.653
+dsatur,myciel6,95,755,7,7,9.926
+dsatur,queen5_5,25,160,5,5,0.114
+dsatur,flat1000_50_0,1000,245000,113,50,68.056
+dsatur,flat300_20_0,300,21375,42,20,5.849
+welsh_powell,queen6_6,36,290,9,7,0.256

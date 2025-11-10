@@ -1,6 +1,9 @@
 #include "welsh_powell.h"
 #include <algorithm>
 #include <vector>
+#include <fstream>
+#include <stdexcept>
+#include <stdexcept>
 
 namespace graph_colouring {
 
@@ -44,6 +47,64 @@ std::vector<int> colour_with_welsh_powell(const Graph &graph) {
                 }
                 if (!conflict) {
                     colour[u] = current_color;
+                }
+            }
+        }
+
+        current_color++;
+    }
+
+    return colour;
+}
+
+std::vector<int> colour_with_welsh_powell_snapshots(const Graph &graph, const std::string &snapshots_path) {
+    const int n = graph.vertex_count;
+    if (n == 0) return {};
+
+    std::vector<int> colour(n, -1);
+
+    std::vector<int> order(n);
+    for (int i = 0; i < n; i++) order[i] = i;
+    std::sort(order.begin(), order.end(),
+        [&](int a, int b) {
+            return graph.adjacency_list[a].size() > graph.adjacency_list[b].size();
+        }
+    );
+
+    std::ofstream out(snapshots_path);
+    if (!out.is_open()) {
+        throw std::runtime_error("Failed to open Welsh-Powell snapshots file: " + snapshots_path);
+    }
+    auto write_snapshot = [&](){
+        for (int i = 0; i < n; ++i) {
+            if (i) out << ' ';
+            out << colour[i];
+        }
+        out << '\n';
+    };
+
+    int current_color = 0;
+
+    for (int i = 0; i < n; i++) {
+        int v = order[i];
+        if (colour[v] != -1) continue;
+
+        colour[v] = current_color;
+        write_snapshot();
+
+        for (int j = i + 1; j < n; j++) {
+            int u = order[j];
+            if (colour[u] == -1) {
+                bool conflict = false;
+                for (int nb : graph.adjacency_list[u]) {
+                    if (colour[nb] == current_color) {
+                        conflict = true;
+                        break;
+                    }
+                }
+                if (!conflict) {
+                    colour[u] = current_color;
+                    write_snapshot();
                 }
             }
         }

@@ -27,6 +27,7 @@ struct Options {
 	std::string results_path;
 	std::string graph_name;
 	std::optional<int> known_optimal;
+    bool save_snapshots{false};
 };
 
 namespace {
@@ -110,13 +111,16 @@ Options parse_arguments(int argc, char **argv) {
 			options.graph_name = require_value(arg);
 		} else if (arg == "--known-optimal") {
 			options.known_optimal = parse_optional_int(require_value(arg));
+		} else if (arg == "--save-snapshots") {
+			options.save_snapshots = true;
 		} else if (arg == "--help" || arg == "-h") {
 			std::cout << "Usage: benchmark_runner --algorithm NAME --input FILE [options]\n"
 					  << "  Options:\n"
 					  << "    --output FILE           Write colouring to FILE\n"
 					  << "    --results FILE          Append metrics to FILE\n"
 					  << "    --graph-name NAME       Override graph identifier\n"
-					  << "    --known-optimal VALUE   Known chromatic number\n";
+					  << "    --known-optimal VALUE   Known chromatic number\n"
+					  << "    --save-snapshots        For dsatur/welsh_powell, write per-iteration colouring snapshots\n";
 			std::exit(0);
 		} else {
 			throw std::invalid_argument("Unknown argument: " + arg);
@@ -176,7 +180,20 @@ int main(int argc, char **argv) {
 		}
 
 		const auto start = std::chrono::high_resolution_clock::now();
-		const std::vector<int> colours = finder->second(graph);
+
+		// Prepare snapshots path if requested and applicable
+		std::vector<int> colours;
+		if (options.save_snapshots && (options.algorithm == "dsatur" || options.algorithm == "welsh_powell")) {
+			std::filesystem::create_directories("snapshots-colouring");
+			const std::string snap_file = std::string("snapshots-colouring/") + options.algorithm + "-" + options.graph_name + "-snnapshots.txt";
+			if (options.algorithm == "dsatur") {
+				colours = colour_with_dsatur_snapshots(graph, snap_file);
+			} else {
+				colours = colour_with_welsh_powell_snapshots(graph, snap_file);
+			}
+		} else {
+			colours = finder->second(graph);
+		}
 		const auto stop = std::chrono::high_resolution_clock::now();
 		const double runtime_ms = std::chrono::duration<double, std::milli>(stop - start).count();
 

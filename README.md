@@ -37,14 +37,15 @@ Minimal data flow from graph file to outputs:
 
 ```mermaid
 flowchart LR
-    G[DIMACS .col file\n(p edge V E + e u v)] --> LG[load_graph()\n→ Graph{V,E,adj}]
-    LG --> D{dispatch\nalgorithm name}
-    D --> A[algorithm fn\n(const Graph&)->vector<int>\n(colours size=V)]
-    A --> W[write_coloring()\n.col output\nv i color]
+    G[DIMACS .col file (p edge V E + e u v)] --> LG[load_graph() → Graph{V,E,adj}]
+    LG --> D{dispatch algorithm name}
+    D --> A[algorithm fn (const Graph&)->vector<int>(colours size=V)]
+    A --> W[write_coloring() .col output\nv i color]
     A --> M[metrics build\ncolor_count,runtime_ms]
     MD[metadata CSVs\nknown_optimal] --> M
-    M --> KO[known_optimal fill\nCLI or lookup]
-    KO --> CSV[append_result_csv()\nresults.csv row]
+    M --> KO[known_optimal fill 
+    CLI or lookup]
+    KO --> CSV[append_result_csv() results.csv row]
 ```
 
 ## Function reference (I/O contracts)
@@ -113,10 +114,3 @@ Order of algorithms per graph:
 	- raw/: per-run colouring outputs `*.col`
 	- results.csv: ad-hoc runs
 	- run_all_results.csv: aggregated batch results
-
-## Notes and next steps
-
-- Welsh-Powell and Simulated Annealing are currently placeholders; fill in their implementations or disable their runs in the orchestrator if undesired.
-- The runner auto-fills `known_optimal` from metadata when not provided on CLI; ensure the metadata files list your graphs when possible.
-- If you add a new algorithm, expose `std::vector<int> colour_with_<name>(const Graph&)`, include its header in `src/benchmark_runner.cpp`, add to `build_algorithm_table()`, and add a Makefile run target.
-
