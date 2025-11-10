@@ -21,4 +21,9 @@ std::vector<int> colour_with_simulated_annealing(const Graph &graph);
 // `steps` will be filled with chronological assignment events (or left empty otherwise).
 std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animate, std::vector<SAStep> &steps);
 
+// SA with snapshots: writes the full colour vector after initial greedy repair
+// and after each accepted move. Final frame is the final assignment.
+std::vector<int> colour_with_simulated_annealing_snapshots(const Graph &graph,
+														   const std::string &snapshots_path);
+
 }  // namespace graph_colouring

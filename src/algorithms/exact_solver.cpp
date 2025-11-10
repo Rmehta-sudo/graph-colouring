@@ -7,6 +7,8 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+#include <fstream>
+#include <functional>
 
 namespace graph_colouring {
 namespace {
@@ -144,6 +146,60 @@ std::vector<int> colour_with_exact(const Graph &graph) {
 	progress.last_report = progress.start_time - std::chrono::seconds(10);
 	maybe_report(progress, n, count_colours(best_solution) - 1, best_k, n);
 
+	return best_solution;
+}
+
+std::vector<int> colour_with_exact_snapshots(const Graph &graph, const std::string &snapshots_path) {
+	const int n = graph.vertex_count;
+	if (n == 0) return {};
+
+	std::ofstream out(snapshots_path);
+	if (!out.is_open()) {
+		throw std::runtime_error("Failed to open exact-solver snapshots file: " + snapshots_path);
+	}
+
+	auto write_snapshot = [&](const std::vector<int> &colours){
+		for (int i = 0; i < (int)colours.size(); ++i) {
+			if (i) out << ' ';
+			out << colours[i];
+		}
+		out << '\n';
+	};
+
+	std::vector<int> ub_solution = colour_with_dsatur(graph);
+	int best_k = count_colours(ub_solution);
+	if (best_k <= 1) {
+		write_snapshot(std::vector<int>(n, 0));
+		return std::vector<int>(n, n ? 0 : -1);
+	}
+
+	std::vector<int> colours(n, -1);
+	std::vector<int> best_solution = ub_solution;
+	write_snapshot(best_solution);
+
+	ProgressState progress;
+	if (const char *env = std::getenv("EXACT_PROGRESS_INTERVAL")) {
+		try {
+			double val = std::stod(env);
+			if (val >= 0.05 && val <= 600.0) progress.interval_sec = val;
+		} catch (...) {}
+	}
+
+	// wrap backtrack to capture improvements
+	std::function<void(const Graph&, std::vector<int>&, int, int, int&, std::vector<int>&, ProgressState&)> rec;
+	rec = [&](const Graph &g, std::vector<int> &col, int coloured_count, int current_max_colour, int &bk, std::vector<int> &best_sol, ProgressState &prog){
+		const int before_best = bk;
+		backtrack_exact(g, col, coloured_count, current_max_colour, bk, best_sol, prog);
+		if (bk < before_best) {
+			write_snapshot(best_sol);
+		}
+	};
+
+	rec(graph, colours, 0, -1, best_k, best_solution, progress);
+
+	progress.last_report = progress.start_time - std::chrono::seconds(10);
+	maybe_report(progress, n, count_colours(best_solution) - 1, best_k, n);
+	write_snapshot(best_solution);
 	return best_solution;
 }
 

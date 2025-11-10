@@ -28,6 +28,10 @@ struct Options {
 	std::string graph_name;
 	std::optional<int> known_optimal;
     bool save_snapshots{false};
+	// Genetic algorithm tuning (optional)
+	int population_size{64};
+	int max_generations{500};
+	double mutation_rate{0.02};
 };
 
 namespace {
@@ -113,6 +117,16 @@ Options parse_arguments(int argc, char **argv) {
 			options.known_optimal = parse_optional_int(require_value(arg));
 		} else if (arg == "--save-snapshots") {
 			options.save_snapshots = true;
+		} else if (arg == "--population-size") {
+			options.population_size = std::stoi(require_value(arg));
+			if (options.population_size < 2) options.population_size = 2;
+		} else if (arg == "--generations") {
+			options.max_generations = std::stoi(require_value(arg));
+			if (options.max_generations < 1) options.max_generations = 1;
+		} else if (arg == "--mutation-rate") {
+			options.mutation_rate = std::stod(require_value(arg));
+			if (options.mutation_rate < 0.0) options.mutation_rate = 0.0;
+			if (options.mutation_rate > 1.0) options.mutation_rate = 1.0;
 		} else if (arg == "--help" || arg == "-h") {
 			std::cout << "Usage: benchmark_runner --algorithm NAME --input FILE [options]\n"
 					  << "  Options:\n"
@@ -120,7 +134,11 @@ Options parse_arguments(int argc, char **argv) {
 					  << "    --results FILE          Append metrics to FILE\n"
 					  << "    --graph-name NAME       Override graph identifier\n"
 					  << "    --known-optimal VALUE   Known chromatic number\n"
-					  << "    --save-snapshots        For dsatur/welsh_powell, write per-iteration colouring snapshots\n";
+					  << "    --save-snapshots        Write per-iteration/epoch snapshots (supported by dsatur, welsh_powell, genetic, simulated_annealing, exact_solver)\n"
+					  << "\n  Genetic algorithm tuning (when -a genetic):\n"
+					  << "    --population-size N     Population size (default 64)\n"
+					  << "    --generations N         Max generations (default 500)\n"
+					  << "    --mutation-rate X       Mutation rate in [0,1] (default 0.02)\n";
 			std::exit(0);
 		} else {
 			throw std::invalid_argument("Unknown argument: " + arg);
@@ -183,16 +201,28 @@ int main(int argc, char **argv) {
 
 		// Prepare snapshots path if requested and applicable
 		std::vector<int> colours;
-		if (options.save_snapshots && (options.algorithm == "dsatur" || options.algorithm == "welsh_powell")) {
+		if (options.save_snapshots) {
 			std::filesystem::create_directories("snapshots-colouring");
 			const std::string snap_file = std::string("snapshots-colouring/") + options.algorithm + "-" + options.graph_name + "-snnapshots.txt";
 			if (options.algorithm == "dsatur") {
 				colours = colour_with_dsatur_snapshots(graph, snap_file);
-			} else {
+			} else if (options.algorithm == "welsh_powell") {
 				colours = colour_with_welsh_powell_snapshots(graph, snap_file);
+			} else if (options.algorithm == "genetic") {
+				colours = colour_with_genetic_snapshots(graph, snap_file, options.population_size, options.max_generations, options.mutation_rate);
+			} else if (options.algorithm == "simulated_annealing") {
+				colours = colour_with_simulated_annealing_snapshots(graph, snap_file);
+			} else if (options.algorithm == "exact_solver") {
+				colours = colour_with_exact_snapshots(graph, snap_file);
+			} else {
+				colours = finder->second(graph);
 			}
 		} else {
-			colours = finder->second(graph);
+			if (options.algorithm == "genetic") {
+				colours = colour_with_genetic(graph, options.population_size, options.max_generations, options.mutation_rate);
+			} else {
+				colours = finder->second(graph);
+			}
 		}
 		const auto stop = std::chrono::high_resolution_clock::now();
 		const double runtime_ms = std::chrono::duration<double, std::milli>(stop - start).count();

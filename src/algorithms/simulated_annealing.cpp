@@ -7,6 +7,7 @@
 #include <numeric>
 #include <random>
 #include <vector>
+#include <fstream>
 
 namespace {
 // small helpers local to this translation unit
@@ -211,7 +212,37 @@ std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animat
 	if (!best_overall.empty()) return best_overall;
 	return std::vector<int>(n, 0);
 
-}  // namespace graph_colouring
-
-// extra namespace closure (balance braces)
 }
+
+std::vector<int> colour_with_simulated_annealing_snapshots(const Graph &graph,
+														   const std::string &snapshots_path) {
+	std::vector<SAStep> steps;
+	auto colours = colour_with_simulated_annealing(graph, true, steps);
+	const int n = static_cast<int>(colours.size());
+	std::ofstream out(snapshots_path);
+	if (!out.is_open()) {
+		throw std::runtime_error("Failed to open SA snapshots file: " + snapshots_path);
+	}
+	// Build frames from steps: start with all -1, then apply each step
+	std::vector<int> frame(n, -1);
+	for (const auto &s : steps) {
+		int v0 = std::max(0, s.vertex - 1);
+		if (v0 < n) frame[v0] = std::max(0, s.color - 1);
+		for (int i = 0; i < n; ++i) {
+			if (i) out << ' ';
+			out << frame[i];
+		}
+		out << '\n';
+	}
+	// ensure final frame (in case no steps or incomplete)
+	if (!steps.empty()) {
+		for (int i = 0; i < n; ++i) {
+			if (i) out << ' ';
+			out << colours[i];
+		}
+		out << '\n';
+	}
+	return colours;
+}
+
+}  // namespace graph_colouring

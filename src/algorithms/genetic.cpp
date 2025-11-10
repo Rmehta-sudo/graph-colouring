@@ -4,6 +4,8 @@
 #include <random>
 #include <vector>
 #include <limits>
+#include <fstream>
+#include <stdexcept>
 
 namespace graph_colouring {
 
@@ -280,6 +282,115 @@ std::vector<int> colour_with_genetic(const Graph &graph,
     if (!best_solution.empty()) return best_solution;
     // fallback: return a trivial colouring (all zeros)
     return std::vector<int>(n, 0);
+}
+
+// Snapshot writer helper
+static void write_snapshot_line(std::ofstream &out, const std::vector<int> &colours) {
+    for (std::size_t i = 0; i < colours.size(); ++i) {
+        if (i) out.put(' ');
+        out << colours[i];
+    }
+    out.put('\n');
+}
+
+std::vector<int> colour_with_genetic_snapshots(const Graph &graph,
+                                               const std::string &snapshots_path,
+                                               int population_size,
+                                               int max_generations,
+                                               double mutation_rate) {
+    const int n = graph.vertex_count;
+    if (n == 0) return {};
+
+    std::ofstream out(snapshots_path);
+    if (!out.is_open()) {
+        throw std::runtime_error("Failed to open Genetic snapshots file: " + snapshots_path);
+    }
+
+    population_size = std::max(6, population_size | 1);
+    std::mt19937 rng(std::random_device{}());
+
+    int maxdeg = max_degree(graph);
+    int start_palette = std::min(maxdeg + 1, std::max(50, (maxdeg + 1)));
+    const int HARD_CAP = std::max(200, start_palette);
+    if (start_palette > HARD_CAP) start_palette = HARD_CAP;
+
+    std::vector<int> best_solution;
+    long long best_fitness_overall = std::numeric_limits<long long>::max();
+
+    for (int palette_k = start_palette; palette_k >= 1; --palette_k) {
+        std::uniform_int_distribution<int> colour_dist(0, palette_k - 1);
+
+        std::vector<Individual> population(population_size);
+        for (auto &ind : population) {
+            ind.colours.resize(n);
+            for (int v = 0; v < n; ++v) ind.colours[v] = colour_dist(rng);
+            ind.colours = greedy_repair_fixed_k(graph, ind.colours, palette_k);
+            evaluate(ind, graph);
+        }
+
+        // record best of initial population
+        Individual best = population.front();
+        for (const auto &ind : population) if (ind.fitness < best.fitness) best = ind;
+        if (best.fitness < best_fitness_overall) {
+            best_fitness_overall = best.fitness;
+            best_solution = best.colours;
+            write_snapshot_line(out, best_solution);
+        }
+
+        bool found_valid = (best.conflicts == 0);
+        std::vector<Individual> next_pop;
+        next_pop.reserve(population_size);
+
+        for (int gen = 0; gen < max_generations && !found_valid; ++gen) {
+            std::sort(population.begin(), population.end(), [](const Individual &a, const Individual &b){return a.fitness < b.fitness;});
+            if (population.front().fitness < best.fitness) best = population.front();
+            if (best.fitness < best_fitness_overall) {
+                best_fitness_overall = best.fitness;
+                best_solution = best.colours;
+                write_snapshot_line(out, best_solution);
+            }
+            if (best.conflicts == 0) { found_valid = true; break; }
+
+            next_pop.clear();
+            int elites = std::min(2, population_size);
+            for (int i = 0; i < elites; ++i) next_pop.push_back(population[i]);
+            while (static_cast<int>(next_pop.size()) < population_size) {
+                const Individual &pa = tournament_select(population, rng);
+                const Individual &pb = tournament_select(population, rng);
+                Individual child = crossover(pa, pb, rng, palette_k);
+                mutate(child, rng, palette_k, mutation_rate);
+                child.colours = greedy_repair_fixed_k(graph, child.colours, palette_k);
+                evaluate(child, graph);
+                next_pop.push_back(std::move(child));
+            }
+            population.swap(next_pop);
+        }
+
+        for (const auto &ind : population) if (ind.fitness < best.fitness) best = ind;
+        if (best.fitness < best_fitness_overall) {
+            best_fitness_overall = best.fitness;
+            best_solution = best.colours;
+            write_snapshot_line(out, best_solution);
+        }
+
+        if (best.conflicts == 0) {
+            continue; // try smaller palette
+        } else {
+            if (!best_solution.empty()) return best_solution;
+            const Individual *min_ind = &population.front();
+            for (const auto &ind : population) if (ind.fitness < min_ind->fitness) min_ind = &ind;
+            write_snapshot_line(out, min_ind->colours);
+            return min_ind->colours;
+        }
+    }
+
+    if (!best_solution.empty()) {
+        write_snapshot_line(out, best_solution);
+        return best_solution;
+    }
+    std::vector<int> trivial(n, 0);
+    write_snapshot_line(out, trivial);
+    return trivial;
 }
 
 } // namespace graph_colouring
