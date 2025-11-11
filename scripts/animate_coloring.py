@@ -525,7 +525,10 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
         plt.show()
 
 
-def main() -> int:
+def main() -> int:\
+    # Disable Matplotlib's default 'q' key
+    plt.rcParams['keymap.quit'] = []
+    
     args = parse_args()
     graph_file, graph_name = resolve_graph_path_and_name(args.graph)
     vertex_count, edges = read_graph(graph_file)
