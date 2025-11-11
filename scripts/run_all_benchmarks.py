@@ -41,7 +41,7 @@ ALGORITHMS = [
     "dsatur",
     "simulated_annealing",
     "genetic",
-    "exact_solver",
+    # "exact_solver",
 ]
 
 HEADER = [
@@ -227,8 +227,8 @@ def main() -> int:
     deferred: List[Tuple[Path, str]] = []
 
     # First pass
-    for algo in ALGORITHMS:
-        for g in graphs:
+    for g in graphs:
+        for algo in ALGORITHMS:
             V, E = read_dimacs_header(g)
             name = g.stem
             ok, reason = run_one(g, algo, args.first_timeout)
@@ -252,11 +252,13 @@ def main() -> int:
                     ko = known_map.get(meta_key_with) or known_map.get(name)
                     append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "ok(no-parse)"])
             else:
+                meta_key_with = name + '.col'
+                ko = known_map.get(meta_key_with) or known_map.get(name)
                 if reason == "timeout":
+                    print(f"Timeout (first pass): {name} with {algo}")
+                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "timeout(first-pass)"])
                     deferred.append((g, algo))
                 else:
-                    meta_key_with = name + '.col'
-                    ko = known_map.get(meta_key_with) or known_map.get(name)
                     append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "error"]) 
 
     # Second pass (retry timeouts)

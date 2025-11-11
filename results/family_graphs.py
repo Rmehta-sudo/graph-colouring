@@ -55,10 +55,20 @@ best_algos = (
 
 merged = summary.merge(best_algos, on="family", how="left")
 
+# Format numeric columns to 5 decimal places for CSV output
+for col in ["avg_vertices", "avg_edges", "avg_colors", "avg_optimal", "avg_ratio", "max_ratio", "avg_runtime_s", "best_avg_ratio"]:
+    if col in summary.columns:
+        summary[col] = summary[col].round(5)
+    if col in merged.columns:
+        merged[col] = merged[col].round(5)
+
 for family, subset in summary.groupby("family"):
     print(f"\n=== {family} Family ===")
     display_cols = ["algorithm", "graphs", "avg_ratio", "max_ratio", "avg_runtime_s"]
-    print(subset[display_cols].to_string(index=False))
+    subset_display = subset[display_cols].copy()
+    for col in ["avg_ratio", "max_ratio", "avg_runtime_s"]:
+        subset_display[col] = subset_display[col].apply(lambda x: f"{x:.5f}")
+    print(subset_display.to_string(index=False))
     best = best_algos[best_algos["family"] == family]["best_algo"].values[0]
     print(f"Best algorithm: {best}")
 
@@ -72,8 +82,10 @@ overall = (
           max_ratio=("color_ratio", "max"),
       ).sort_values("mean_ratio")
 )
-print(overall.to_string())
+overall_display = overall.copy()
+for col in ["mean_ratio", "mean_runtime", "max_ratio"]:
+    overall_display[col] = overall_display[col].apply(lambda x: f"{x:.5f}")
+print(overall_display.to_string())
 
-summary.to_csv(ROOT / "graph_family_summary.csv", index=False)
 merged.to_csv(ROOT / "graph_family_best_analysis.csv", index=False)
-print("\nSaved: graph_family_summary.csv, graph_family_best_analysis.csv")
+print("\nSaved: graph_family_best_analysis.csv")
