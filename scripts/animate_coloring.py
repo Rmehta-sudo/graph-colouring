@@ -332,7 +332,9 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
     def update(frame_idx: int):
         colours = [colour_to_rgba(c) for c in frames[frame_idx]]
         scat.set_color(colours)
-        title.set_text(f"Iteration {frame_idx+1}/{len(frames)}")
+        # Count unique colors (excluding -1)
+        unique_colors = len(set(c for c in frames[frame_idx] if c >= 0))
+        title.set_text(f"Iteration {frame_idx+1}/{len(frames)} | Colors: {unique_colors}")
         fig.canvas.draw_idle()
 
     if manual:
@@ -344,13 +346,10 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
                 if frame_index < len(frames) - 1:
                     frame_index += 1
                     update(frame_index)
-                else:
-                    if repeat:
-                        frame_index = 0
-                        update(frame_index)
-                    else:
-                        plt.close(fig)
-                        # sys.exit(0)
+                elif repeat:
+                    frame_index = 0
+                    update(frame_index)
+                # If at end and not repeat, do nothing (don't close)
             elif event.key in ("h", "left"):
                 if frame_index > 0:
                     frame_index -= 1
@@ -441,7 +440,9 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
         use_idx = min(idx, len(frames)-1)
         colours = [colour_to_rgba(c) for c in frames[use_idx]]
         scatters[algo].set_color(colours)
-        titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)}")
+        # Count unique colors (excluding -1)
+        unique_colors = len(set(c for c in frames[use_idx] if c >= 0))
+        titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)} | Colors: {unique_colors}")
 
     if manual:
         # Manual stepping advances all algos together using max_len
@@ -453,7 +454,9 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
                 use_idx = min(idx, len(frames)-1)
                 colours = [colour_to_rgba(c) for c in frames[use_idx]]
                 scatters[algo].set_color(colours)
-                titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)}")
+                # Count unique colors (excluding -1)
+                unique_colors = len(set(c for c in frames[use_idx] if c >= 0))
+                titles[algo].set_text(f"{algo}: {use_idx+1}/{len(frames)} | Colors: {unique_colors}")
             fig.canvas.draw_idle()
         update_all(frame_index)
         def on_key(event):
@@ -463,12 +466,10 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
                 if frame_index < max_len - 1:
                     frame_index += 1
                     update_all(frame_index)
-                else:
-                    if repeat:
-                        frame_index = 0
-                        update_all(frame_index)
-                    else:
-                        plt.close(fig)
+                elif repeat:
+                    frame_index = 0
+                    update_all(frame_index)
+                # If at end and not repeat, do nothing (don't close)
             elif event.key in ("h", "left"):
                 if frame_index > 0:
                     frame_index -= 1
