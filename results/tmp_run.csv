@@ -1,0 +1,2 @@
+algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms
+genetic,DSJC1000.9,1000,449449,316,224,299529.197

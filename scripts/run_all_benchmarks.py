@@ -94,13 +94,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--first-timeout",
         type=float,
-        default=15.0,
+        default=150.0,
         help="Seconds for first-pass timeout per job (default: 15)",
     )
     p.add_argument(
         "--second-timeout",
         type=float,
-        default=30.0,
+        default=300.0,
         help="Seconds for retry timeout per job (default: 30)",
     )
     return p.parse_args()
