@@ -29,7 +29,6 @@ exact_solver,planar_261_2,261,430,3,,0.413,ok
 exact_solver,planar_309_4,309,492,3,,0.554,ok
 exact_solver,planar_329_1,329,515,3,,0.564,ok
 exact_solver,planar_420_3,420,652,3,,1.002,ok
-exact_solver,small_grid_5x8,40,0,1,,0.006,ok
 exact_solver,tree_238_1,238,237,2,,0.100,ok
 exact_solver,tree_275_4,275,274,2,,0.114,ok
 exact_solver,tree_505_2,505,504,2,,0.303,ok

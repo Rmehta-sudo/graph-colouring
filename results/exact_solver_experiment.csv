@@ -48,3 +48,10 @@ exact_solver,flat300_26_0,300,21633,,,,timeout>120.0s
 exact_solver,flat300_28_0,300,21695,,,,timeout>120.0s
 exact_solver,fpsol2.i.1,496,11654,,,,timeout>120.0s
 exact_solver,games120,120,1276,,,,timeout>120.0s
+exact_solver,homer,561,3258,,,,timeout>120.0s
+exact_solver,huck,74,602,,,,timeout>120.0s
+exact_solver,inithx.i.1,864,18707,,,,timeout>120.0s
+exact_solver,inithx.i.2,645,13979,,,,timeout>120.0s
+exact_solver,inithx.i.3,621,13969,,,,timeout>120.0s
+exact_solver,latin_square_10,900,307350,,,,timeout>120.0s
+exact_solver,le450_15a,450,8168,,,,timeout>120.0s
