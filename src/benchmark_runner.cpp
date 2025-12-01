@@ -32,6 +32,11 @@ struct Options {
 	int population_size{64};
 	int max_generations{500};
 	double mutation_rate{0.02};
+
+	// Simulated Annealing tuning (optional)
+	std::string sa_mode{"default"}; // default, heavy, precision, speed
+	double sa_initial_temp{1.0};
+	int sa_iter_mult{50};
 };
 
 namespace {
@@ -127,6 +132,12 @@ Options parse_arguments(int argc, char **argv) {
 			options.mutation_rate = std::stod(require_value(arg));
 			if (options.mutation_rate < 0.0) options.mutation_rate = 0.0;
 			if (options.mutation_rate > 1.0) options.mutation_rate = 1.0;
+		} else if (arg == "--sa-mode") {
+			options.sa_mode = require_value(arg);
+		} else if (arg == "--sa-initial-temp") {
+			options.sa_initial_temp = std::stod(require_value(arg));
+		} else if (arg == "--sa-iter-mult") {
+			options.sa_iter_mult = std::stoi(require_value(arg));
 		} else if (arg == "--help" || arg == "-h") {
 			std::cout << "Usage: benchmark_runner --algorithm NAME --input FILE [options]\n"
 					  << "  Options:\n"
@@ -138,7 +149,11 @@ Options parse_arguments(int argc, char **argv) {
 					  << "\n  Genetic algorithm tuning (when -a genetic):\n"
 					  << "    --population-size N     Population size (default 64)\n"
 					  << "    --generations N         Max generations (default 500)\n"
-					  << "    --mutation-rate X       Mutation rate in [0,1] (default 0.02)\n";
+					  << "    --mutation-rate X       Mutation rate in [0,1] (default 0.02)\n"
+					  << "\n  Simulated Annealing tuning (when -a simulated_annealing):\n"
+					  << "    --sa-mode MODE          Mode: default, heavy, precision, speed\n"
+					  << "    --sa-initial-temp T     Initial temperature (default 1.0)\n"
+					  << "    --sa-iter-mult N        Iterations multiplier (default 50)\n";
 			std::exit(0);
 		} else {
 			throw std::invalid_argument("Unknown argument: " + arg);
@@ -201,6 +216,20 @@ int main(int argc, char **argv) {
 
 		// Prepare snapshots path if requested and applicable
 		std::vector<int> colours;
+		
+		// Helper to build SA config
+		auto build_sa_config = [&]() {
+			SAConfig config;
+			if (options.sa_mode == "heavy") config.mode = SAMode::Heavy;
+			else if (options.sa_mode == "precision") config.mode = SAMode::Precision;
+			else if (options.sa_mode == "speed") config.mode = SAMode::Speed;
+			else config.mode = SAMode::Default;
+			
+			config.initial_temperature = options.sa_initial_temp;
+			config.iteration_multiplier = options.sa_iter_mult;
+			return config;
+		};
+
 		if (options.save_snapshots) {
 			std::filesystem::create_directories("snapshots-colouring");
 			const std::string snap_file = std::string("snapshots-colouring/") + options.algorithm + "-" + options.graph_name + "-snnapshots.txt";
@@ -211,7 +240,7 @@ int main(int argc, char **argv) {
 			} else if (options.algorithm == "genetic") {
 				colours = colour_with_genetic_snapshots(graph, snap_file, options.population_size, options.max_generations, options.mutation_rate);
 			} else if (options.algorithm == "simulated_annealing") {
-				colours = colour_with_simulated_annealing_snapshots(graph, snap_file);
+				colours = colour_with_simulated_annealing_snapshots(graph, snap_file, build_sa_config());
 			} else if (options.algorithm == "exact_solver") {
 				colours = colour_with_exact_snapshots(graph, snap_file);
 			} else {
@@ -220,6 +249,8 @@ int main(int argc, char **argv) {
 		} else {
 			if (options.algorithm == "genetic") {
 				colours = colour_with_genetic(graph, options.population_size, options.max_generations, options.mutation_rate);
+			} else if (options.algorithm == "simulated_annealing") {
+				colours = colour_with_simulated_annealing(graph, build_sa_config());
 			} else {
 				colours = finder->second(graph);
 			}

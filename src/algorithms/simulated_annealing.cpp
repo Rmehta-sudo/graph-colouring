@@ -100,13 +100,13 @@ int max_degree(const graph_colouring::Graph &graph) {
 
 namespace graph_colouring {
 
-std::vector<int> colour_with_simulated_annealing(const Graph &graph) {
+std::vector<int> colour_with_simulated_annealing(const Graph &graph, const SAConfig &config) {
 	// delegate to animated overload without recording steps
 	std::vector<SAStep> steps;
-	return colour_with_simulated_annealing(graph, false, steps);
+	return colour_with_simulated_annealing(graph, false, steps, config);
 }
 
-std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animate, std::vector<SAStep> &steps) {
+std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animate, std::vector<SAStep> &steps, const SAConfig &config) {
 	const int n = graph.vertex_count;
 	if (n == 0) return {};
 
@@ -126,6 +126,34 @@ std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animat
 	std::vector<int> best_overall;
 	int best_overall_conflicts = std::numeric_limits<int>::max();
 	int best_overall_k = std::numeric_limits<int>::max();
+
+	// Determine parameters based on config
+	double initial_T = 1.0;
+	int iter_mult = 50;
+	bool use_kempe = false;
+
+	switch (config.mode) {
+		case SAMode::Heavy:
+			initial_T = 4.0;
+			iter_mult = 1000;
+			break;
+		case SAMode::Precision:
+			initial_T = 0.5;
+			iter_mult = 500;
+			use_kempe = true; // We will simulate "smart" neighbor selection by prioritizing conflicts
+			break;
+		case SAMode::Speed:
+			initial_T = 1.0;
+			iter_mult = 50;
+			break;
+		case SAMode::Default:
+		default:
+			// Use custom values if provided, else defaults
+			initial_T = config.initial_temperature;
+			iter_mult = config.iteration_multiplier;
+			use_kempe = config.use_kempe_chains;
+			break;
+	}
 
 	// outer loop: try decreasing palette size
 	for (int palette_k = start_palette; palette_k >= 1; --palette_k) {
@@ -151,8 +179,8 @@ std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animat
 		}
 
 		// SA parameters
-		const int iters = std::max(1000, n * 50);
-		double T = 1.0;
+		const int iters = std::max(1000, n * iter_mult);
+		double T = initial_T;
 		const double Tmin = 1e-4;
 		const double alpha = std::pow(Tmin / T, 1.0 / static_cast<double>(iters));
 
@@ -160,7 +188,25 @@ std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animat
 		std::uniform_real_distribution<double> real01(0.0, 1.0);
 
 		for (int iter = 0; iter < iters; ++iter) {
-			int v = vertex_dist(rng);
+			int v = -1;
+			
+			if (use_kempe) {
+				// "Precision" strategy: prioritize conflicted vertices
+				// Simple heuristic: try to pick a conflicted vertex with some probability
+				// or just pick random. Let's do a mix: 50% chance to pick a conflicted node if any exist.
+				// Since maintaining a list of conflicted nodes is expensive, we'll just try a few random probes.
+				for(int probe=0; probe<5; ++probe) {
+					int candidate = vertex_dist(rng);
+					if (count_conflicts_local(graph, colours, candidate) > 0) {
+						v = candidate;
+						break;
+					}
+				}
+				if (v == -1) v = vertex_dist(rng);
+			} else {
+				v = vertex_dist(rng);
+			}
+
 			int oldc = colours[v];
 			int newc = oldc;
 			if (palette_k > 1) {
@@ -215,9 +261,10 @@ std::vector<int> colour_with_simulated_annealing(const Graph &graph, bool animat
 }
 
 std::vector<int> colour_with_simulated_annealing_snapshots(const Graph &graph,
-														   const std::string &snapshots_path) {
+														   const std::string &snapshots_path,
+														   const SAConfig &config) {
 	std::vector<SAStep> steps;
-	auto colours = colour_with_simulated_annealing(graph, true, steps);
+	auto colours = colour_with_simulated_annealing(graph, true, steps, config);
 	const int n = static_cast<int>(colours.size());
 	std::ofstream out(snapshots_path);
 	if (!out.is_open()) {
