@@ -7,6 +7,7 @@ Supported algorithms (all snapshot-enabled):
     - genetic
     - simulated_annealing
     - exact_solver
+    - tabu_search
 
 You can either pre-generate snapshots using the C++ runner or let this script
 invoke the runner automatically (default). Snapshot file pattern:
@@ -17,6 +18,7 @@ Basic usage examples:
     python3 scripts/animate_coloring.py --graph myciel6 --algo simulated_annealing --interval 0.05
     python3 scripts/animate_coloring.py --graph myciel6 --algo genetic --population-size 128 --generations 800
     python3 scripts/animate_coloring.py --graph myciel6 --algo exact_solver --exact-progress-interval 2.5
+    python3 scripts/animate_coloring.py --graph myciel6 --algo tabu_search
 
 Algorithm-specific optional flags when auto-running:
     genetic:
@@ -81,12 +83,13 @@ PALETTE = list(mcolors.TABLEAU_COLORS.values()) + [
 
 def print_full_help() -> None:
     msg = """
-Snapshot animation helper for 5 algorithms: dsatur, welsh_powell, genetic, simulated_annealing, exact_solver
+Snapshot animation helper for 6 algorithms: dsatur, welsh_powell, genetic, simulated_annealing, exact_solver, tabu_search
 
 Basics:
     python3 scripts/animate_coloring.py --graph myciel6 --algo dsatur
     python3 scripts/animate_coloring.py --graph generated/flat300_20_0.col --algo simulated_annealing --interval 0.05
     python3 scripts/animate_coloring.py --graph myciel3 --algo exact_solver --exact-progress-interval 2
+    python3 scripts/animate_coloring.py --graph myciel6 --algo tabu_search
 
 Run all algos side-by-side:
     python3 scripts/animate_coloring.py --graph myciel6 --all-algos
@@ -136,7 +139,7 @@ def parse_args() -> argparse.Namespace:
             "Graph id: bare name (myciel6) or path relative to scripts/datasets (e.g. dimacs/myciel6.col, generated/flat300_20_0.col) or absolute path."
         ),
     )
-    p.add_argument("--algo", required=not all_algos_mode, choices=["dsatur", "welsh_powell", "genetic", "simulated_annealing", "exact_solver"], help="Snapshot-enabled algorithm (not required with --all-algos)")
+    p.add_argument("--algo", required=not all_algos_mode, choices=["dsatur", "welsh_powell", "genetic", "simulated_annealing", "exact_solver", "tabu_search"], help="Snapshot-enabled algorithm (not required with --all-algos)")
     p.add_argument("--interval", type=float, default=0.2, help="Seconds between frames (default 0.2)")
     p.add_argument("--sa-interval", type=float, help="Override interval specifically for simulated_annealing (has many more iterations)")
     p.add_argument("--manual", action="store_true", help="Manual stepping mode: next (enter/space/k/right), back (left/h), quit (q/escape).")
@@ -144,7 +147,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--layout", choices=["spring", "circular"], default="spring", help="Layout strategy (default spring; circular fallback)")
     p.add_argument("--seed", type=int, default=42, help="Random seed for layout (spring)")
     p.add_argument("--skip-run", action="store_true", help="Assume snapshots already exist; don't invoke C++ binary")
-    p.add_argument("--all-algos", action="store_true", help="Animate all 5 algorithms side-by-side for the given graph")
+    p.add_argument("--all-algos", action="store_true", help="Animate all 6 algorithms side-by-side for the given graph")
     p.add_argument("--full-help", action="store_true", help="Print extended usage, examples, and GA/Exact settings, then exit")
     # Genetic algorithm tuning
     p.add_argument("--population-size", type=int, default=64, help="Genetic: population size (default 64)")
@@ -252,8 +255,8 @@ def generate_snapshots_if_needed(algo: str, graph_name: str, graph_file: Path, a
         raise FileNotFoundError(f"Runner binary not found at {BENCH}. Build it first (make all).")
     SNAP_DIR.mkdir(parents=True, exist_ok=True)
     # Ensure raw results dir exists
-    (ROOT / "results" / "raw").mkdir(parents=True, exist_ok=True)
-    out_col = ROOT / "results" / "raw" / f"{graph_name}_{algo}.col"
+    (ROOT / "results" / "colourings").mkdir(parents=True, exist_ok=True)
+    out_col = ROOT / "results" / "colourings" / f"{graph_name}_{algo}.col"
     results_csv = ROOT / "results" / "results.csv"
     cmd = [str(BENCH), "--algorithm", algo, "--input", str(graph_file), "--output", str(out_col), "--results", str(results_csv), "--graph-name", graph_name, "--save-snapshots"]
 
@@ -536,7 +539,7 @@ def main() -> int:\
     all_algos_mode = getattr(args, 'all_algos', False)
     
     if all_algos_mode:
-        all_algos = ["dsatur", "welsh_powell", "genetic", "simulated_annealing", "exact_solver"]
+        all_algos = ["dsatur", "welsh_powell", "genetic", "simulated_annealing", "exact_solver", "tabu_search"]
         frames_map: Dict[str, List[List[int]]] = {}
         for algo in all_algos:
             if not args.skip_run:

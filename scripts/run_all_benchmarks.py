@@ -34,13 +34,14 @@ GENERATED_DIR = ROOT / "scripts" / "datasets" / "generated"
 RESULTS_DIR = ROOT / "results"
 AGGREGATE_CSV = RESULTS_DIR / "run_all_results.csv"
 TMP_RESULT = RESULTS_DIR / "tmp_run.csv"
-RAW_DIR = RESULTS_DIR / "raw"
+colourings_DIR = RESULTS_DIR / "colourings"
 
 ALGORITHMS = [
     "welsh_powell",
     "dsatur",
     "simulated_annealing",
     "genetic",
+    "tabu_search",
     # "exact_solver",
 ]
 
@@ -108,7 +109,7 @@ def parse_args() -> argparse.Namespace:
 
 def ensure_dirs() -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    colourings_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def discover_graphs(include_generated: bool, explicit: List[str] | None) -> List[Path]:
@@ -187,7 +188,7 @@ def parse_tmp_result() -> Tuple[str, str, str, str, str, str, str]:
 
 def run_one(graph_path: Path, algo: str, timeout_s: float) -> Tuple[bool, str]:
     graph_name = graph_path.stem
-    output_path = RAW_DIR / f"{graph_name}_{algo}.col"
+    output_path = colourings_DIR / f"{graph_name}_{algo}.col"
     # Use a temporary results file to capture a single row for aggregation
     if TMP_RESULT.exists():
         TMP_RESULT.unlink(missing_ok=True)  # type: ignore[arg-type]

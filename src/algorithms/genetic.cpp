@@ -122,6 +122,7 @@ const Individual &tournament_select(const std::vector<Individual> &population, s
 
 // ---------- greedy repair ----------
 std::vector<int> greedy_repair_fixed_k(const Graph &graph, const std::vector<int> &seed, int palette_k) {
+    static thread_local std::mt19937 rng(std::random_device{}());
     const int n = graph.vertex_count;
     std::vector<int> colours(n, -1);
     std::vector<char> banned(palette_k, 0);
@@ -247,7 +248,7 @@ std::vector<int> colour_with_genetic_snapshots(const Graph &graph,
         if (i) out.put(' ');
         out << result[i];
     }
-    out.put('\\n');
+    out.put('\n');
     return result;
 }
 

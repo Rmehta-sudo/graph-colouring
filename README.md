@@ -20,7 +20,7 @@ Example via Makefile targets (change `GRAPH=...`):
 
 Direct CLI:
 
-- build/benchmark_runner --algorithm dsatur --input scripts/datasets/dimacs/myciel6.col --output results/raw/myciel6_dsatur.col --results results/results.csv --graph-name myciel6
+- build/benchmark_runner --algorithm dsatur --input scripts/datasets/dimacs/myciel6.col --output results/colourings/myciel6_dsatur.col --results results/results.csv --graph-name myciel6
 
 CLI options:
 
@@ -84,7 +84,7 @@ The Python orchestrator runs all algorithms over a set of graphs with robust tim
 - make run-all-benchmarking
 	- Builds if needed; runs `scripts/run_all_benchmarks.py --include-generated`
 	- First pass timeout: 15s per job; retry timeouts with 30s; if still timing out, marks `timeout>45s`
-	- Output: colouring files in `results/raw/` and aggregate CSV at `results/run_all_results.csv`
+	- Output: colouring files in `results/colourings/` and aggregate CSV at `results/run_all_results.csv`
 
 You can call the script directly for custom runs:
 
@@ -111,6 +111,6 @@ Order of algorithms per graph:
 	- run_all_benchmarks.py: batch runner with timeouts, retries, status aggregation
 	- datasets/: DIMACS and generated graphs, plus metadata CSVs
 - results/
-	- raw/: per-run colouring outputs `*.col`
+	- colourings/: per-run colouring outputs `*.col`
 	- results.csv: ad-hoc runs
 	- run_all_results.csv: aggregated batch results

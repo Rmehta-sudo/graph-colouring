@@ -5,6 +5,7 @@
 #include "algorithms/dsatur.h"
 #include "algorithms/simulated_annealing.h"
 #include "algorithms/exact_solver.h"
+#include "algorithms/tabu.h"
 
 #include <chrono>
 #include <filesystem>
@@ -129,12 +130,13 @@ Options parse_arguments(int argc, char **argv) {
 			if (options.mutation_rate > 1.0) options.mutation_rate = 1.0;
 		} else if (arg == "--help" || arg == "-h") {
 			std::cout << "Usage: benchmark_runner --algorithm NAME --input FILE [options]\n"
+					  << "  Algorithms: welsh_powell, dsatur, simulated_annealing, genetic, exact_solver, tabu_search\n"
 					  << "  Options:\n"
 					  << "    --output FILE           Write colouring to FILE\n"
 					  << "    --results FILE          Append metrics to FILE\n"
 					  << "    --graph-name NAME       Override graph identifier\n"
 					  << "    --known-optimal VALUE   Known chromatic number\n"
-					  << "    --save-snapshots        Write per-iteration/epoch snapshots (supported by dsatur, welsh_powell, genetic, simulated_annealing, exact_solver)\n"
+					  << "    --save-snapshots        Write per-iteration/epoch snapshots (supported by all algorithms)\n"
 					  << "\n  Genetic algorithm tuning (when -a genetic):\n"
 					  << "    --population-size N     Population size (default 64)\n"
 					  << "    --generations N         Max generations (default 500)\n"
@@ -167,6 +169,7 @@ build_algorithm_table() {
 		{"simulated_annealing", [](const Graph &graph) { return colour_with_simulated_annealing(graph); }},
 		{"genetic", [](const Graph &graph) { return colour_with_genetic(graph); }},
 		{"exact_solver", [](const Graph &graph) { return colour_with_exact(graph); }},
+		{"tabu_search", [](const Graph &graph) { return colour_with_tabu(graph); }},
 	};
 }
 
@@ -214,6 +217,8 @@ int main(int argc, char **argv) {
 				colours = colour_with_simulated_annealing_snapshots(graph, snap_file);
 			} else if (options.algorithm == "exact_solver") {
 				colours = colour_with_exact_snapshots(graph, snap_file);
+			} else if (options.algorithm == "tabu_search") {
+				colours = colour_with_tabu_snapshots(graph, snap_file);
 			} else {
 				colours = finder->second(graph);
 			}
