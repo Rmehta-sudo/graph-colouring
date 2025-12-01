@@ -604,3 +604,51 @@ make run-dsatur GRAPH=dimacs/myciel6.col SNAPSHOTS=1
 # Increase timeouts
 python3 tools/run_all_benchmarks.py --first-timeout 60 --second-timeout 120
 ```
+
+---
+
+## 12. Bonus Applications
+
+### University Exam Scheduler
+
+A graphical application for conflict-free exam timetabling using graph colouring.
+
+```bash
+cd bonus/exam_scheduler
+python3 exam_scheduler.py
+```
+
+**Features:**
+- Load student registrations from CSV
+- Automatic conflict graph construction
+- DSatur and Exact solver algorithms
+- Visual timetable display
+- Export to CSV
+
+**CSV Format (student registrations):**
+```csv
+student_id,course1,course2,course3,...
+```
+
+### Maximum Clique Finder
+
+Find the maximum clique (largest complete subgraph) using Bron-Kerbosch algorithm.
+
+```bash
+cd bonus/max_clique
+
+# Build
+g++ -O3 -std=c++17 max_clique.cpp -o max_clique
+
+# Run
+./max_clique ../../data/dimacs/myciel6.col
+
+# Batch experiments
+python3 run_dimacs.py
+python3 run_generated.py
+```
+
+**Why it matters:**
+- Clique number ω(G) is a lower bound for chromatic number χ(G)
+- Validates colouring quality: if colours_used = ω(G), colouring is optimal
+- Results in `bonus/max_clique/results/`

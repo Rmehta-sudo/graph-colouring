@@ -1,9 +1,31 @@
 
 
-##  Graph Coloring Project — Implementation Guidelines 
-###  Command Format
 
-Every algorithm executable must follow **this exact command-line format**:
+## Graph Coloring Project — Implementation Guidelines
+
+> **Note:** This document describes the original specification. The actual implementation uses a unified `benchmark_runner` binary with CSV output instead of per-algorithm executables with JSON output.
+
+### Current Implementation
+
+The project uses a single `benchmark_runner` executable:
+
+```bash
+./build/benchmark_runner --algorithm <name> --input <graph.col> --output <result.col> --results <metrics.csv> [--save-snapshots]
+```
+
+**Supported Algorithms:**
+- `welsh_powell` - Degree-ordered greedy
+- `dsatur` - Saturation-based greedy  
+- `simulated_annealing` - Temperature-based metaheuristic
+- `genetic` - Evolutionary algorithm
+- `tabu_search` - TabuCol metaheuristic
+- `exact_solver` - Branch-and-bound exact
+
+---
+
+### Original Specification (Historical)
+
+The original command format:
 
 ```bash
 ./<algorithm_name> --input <path_to_graph.col> --output <path_to_output.json> [--animate]
@@ -19,7 +41,7 @@ Every algorithm executable must follow **this exact command-line format**:
 
 ###  Input Format (`.col` file)
 
-The input file will follow the **DIMACS-style format**:
+The input file follows the **DIMACS-style format**:
 
 ```
 c some comments
@@ -47,9 +69,28 @@ e 4 5
 
 ---
 
-### Output Format (`.json`)
+### Output Formats
 
-Each algorithm **must output a JSON file** in this structure:
+#### Current: CSV Results
+
+```csv
+algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms
+dsatur,myciel6,95,755,7,7,0.234
+```
+
+#### Current: Colouring Output (`.col`)
+
+```
+c Coloring produced by dsatur
+c Graph: myciel6.col
+c Colors used: 7
+v 1 1
+v 2 2
+v 3 1
+...
+```
+
+#### Original Spec: JSON Output
 
 ```json
 {
@@ -63,20 +104,35 @@ Each algorithm **must output a JSON file** in this structure:
 }
 ```
 
-#### Notes:
-
-* `colors_used`: total number of unique colors used.
-* `runtime_ms`: total runtime in milliseconds.
-* `coloring`: color assigned to each vertex (1-indexed).
-* `steps`: **optional**, used only if `--animate` flag is passed.
-
 ---
 
-### 🎞️ Animation / Logging Mode (`--animate`)
+### Animation / Snapshots
 
-If the `--animate` flag is provided, each algorithm should **record step-by-step color assignments**.
+#### Current Implementation
 
-Example for `"steps"` field:
+Use `--save-snapshots` flag to generate snapshot files:
+
+```bash
+./build/benchmark_runner --algorithm dsatur --input graph.col --save-snapshots
+```
+
+Output: `output/snapshots/<algo>-<graph>-snapshots.txt`
+
+Each line contains the complete colour assignment at that step:
+```
+-1 -1 -1 -1 -1
+0 -1 -1 -1 -1
+0 1 -1 -1 -1
+0 1 0 -1 -1
+...
+```
+
+Visualize with:
+```bash
+python3 tools/animate_coloring.py --graph myciel6 --algo dsatur
+```
+
+#### Original Spec: JSON Steps
 
 ```json
 "steps": [
@@ -85,10 +141,6 @@ Example for `"steps"` field:
   {"step": 3, "vertex": 5, "color": 1}
 ]
 ```
-
-If `--animate` is **not** passed, `"steps"` must be an **empty array** (`[]`).
-
-This will be used later for a Python visualizer to show coloring progression on small graphs.
 
 ---
 
@@ -105,23 +157,56 @@ double runtime = chrono::duration<double, milli>(end - start).count();
 
 ---
 
-###  File Naming Convention
+### File Organization
 
-| Algorithm           | Executable     | Source File        |
-| ------------------- | -------------- | ------------------ |
-| Welsh–Powell        | `welsh_powell` | `welsh_powell.cpp` |
-| DSatur              | `dsatur`       | `dsatur.cpp`       |
-| Simulated Annealing | `sim_anneal`   | `sim_anneal.cpp`   |
-| Exact Solver        | `exact_dp`     | `exact_dp.cpp`     |
-| Genetic Algorithm   | `genetic`      | `genetic.cpp`      |
+| Component | Location |
+|-----------|----------|
+| Main runner | `src/benchmark_runner.cpp` |
+| Algorithms | `src/algorithms/*.cpp` |
+| I/O utilities | `src/io/*.cpp` |
+| Python tools | `tools/*.py` |
+| Bonus apps | `bonus/` |
+
+### Algorithm Files
+
+| Algorithm           | Header | Implementation |
+| ------------------- | ------ | -------------- |
+| Welsh–Powell        | `welsh_powell.h` | `welsh_powell.cpp` |
+| DSatur              | `dsatur.h` | `dsatur.cpp` |
+| Simulated Annealing | `simulated_annealing.h` | `simulated_annealing.cpp` |
+| Exact Solver        | `exact_solver.h` | `exact_solver.cpp` |
+| Genetic Algorithm   | `genetic.h` | `genetic.cpp` |
+| Tabu Search         | `tabu.h` | `tabu.cpp` |
 
 ---
 
-###  Rules
+### Bonus Applications
+
+#### Exam Scheduler (`bonus/exam_scheduler/`)
+
+GUI application for conflict-free exam timetabling.
+
+```bash
+python3 bonus/exam_scheduler/exam_scheduler.py
+```
+
+#### Maximum Clique (`bonus/max_clique/`)
+
+Bron-Kerbosch algorithm for finding maximum cliques.
+
+```bash
+cd bonus/max_clique
+g++ -O3 -std=c++17 max_clique.cpp -o max_clique
+./max_clique ../../data/dimacs/myciel6.col
+```
+
+---
+
+### Rules
 
 * Only **print errors** to `stderr`, never to `stdout`.
-* All algorithm results must go to the **output JSON file**, not the console.
-* The code must handle invalid input gracefully (e.g., print an error message to `stderr` and exit).
+* All algorithm results go to **output files**, not the console.
+* Handle invalid input gracefully (error message to `stderr` and exit).
 * Avoid hardcoding paths.
-* Use 1-based vertex indexing throughout.
+* Use 1-based vertex indexing in DIMACS files, 0-based internally.
 

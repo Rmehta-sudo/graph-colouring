@@ -11,6 +11,7 @@ Benchmark, compare, and analyze graph colouring algorithms on DIMACS and generat
 - [Quick Start](#quick-start)
 - [Algorithms Implemented](#algorithms-implemented)
 - [Usage](#usage)
+- [Bonus Applications](#bonus-applications)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
 
@@ -204,6 +205,69 @@ python3 tools/animate_coloring.py --graph myciel6 --all-algos  # Compare all
 
 ---
 
+## Bonus Applications
+
+This project includes two bonus applications demonstrating real-world uses of graph colouring:
+
+### 1. University Exam Scheduler (`bonus/exam_scheduler/`)
+
+A **graphical application** for creating conflict-free exam timetables using graph colouring algorithms.
+
+**Features:**
+- Modern Tkinter GUI with checkbox-based course selection
+- Builds conflict graph from student course registrations
+- Pure Python implementations of DSatur and Exact solver
+- Exports schedules to CSV
+
+**Usage:**
+```bash
+cd bonus/exam_scheduler
+python3 exam_scheduler.py
+```
+
+**How it works:**
+1. Load student registrations from CSV (columns: student_id, course1, course2, ...)
+2. Build conflict graph where courses sharing students become adjacent vertices
+3. Apply graph colouring to assign time slots (colours = exam slots)
+4. Display and export the conflict-free timetable
+
+**Sample Data:**
+- `eg.csv` - Small test dataset
+- `big-eg.csv` - Larger realistic dataset
+
+### 2. Maximum Clique Finder (`bonus/max_clique/`)
+
+Find the **maximum clique** (largest complete subgraph) using the Bron-Kerbosch algorithm with pivoting.
+
+**Relationship to Graph Colouring:**
+- The chromatic number χ(G) ≥ ω(G), where ω(G) is the clique number
+- Maximum clique provides a **lower bound** for graph colouring
+- Useful for validating colouring results
+
+**Build & Run:**
+```bash
+cd bonus/max_clique
+
+# Compile
+g++ -O3 -std=c++17 max_clique.cpp -o max_clique
+
+# Run on a graph
+./max_clique ../data/dimacs/myciel6.col
+
+# Run batch experiments
+python3 run_dimacs.py
+python3 run_generated.py
+```
+
+**Output:**
+- Maximum clique size (ω)
+- Vertices in the maximum clique
+- Runtime statistics
+
+**Results:** See `bonus/max_clique/results/` for benchmark outputs.
+
+---
+
 ## Project Structure
 
 ```text
@@ -252,6 +316,17 @@ graph-colouring/
 │   ├── PROJECT_SUMMARY.md      # Detailed project documentation
 │   ├── code-spec.md            # Code specifications
 │   └── references/             # Academic papers
+│
+├── bonus/                      # Bonus applications
+│   ├── exam_scheduler/         # University exam scheduling GUI
+│   │   ├── exam_scheduler.py   # Main application
+│   │   ├── eg.csv              # Sample student data
+│   │   └── exam_scheduler_report.pdf
+│   └── max_clique/             # Maximum clique finder
+│       ├── max_clique.cpp      # Bron-Kerbosch implementation
+│       ├── run_dimacs.py       # Batch runner for DIMACS
+│       ├── results/            # Benchmark results
+│       └── max_clique_report.pdf
 │
 ├── legacy/                     # Old/utility scripts
 │

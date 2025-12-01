@@ -678,6 +678,70 @@ python3 tools/generate_graphs.py --overwrite
 
 ---
 
+## Bonus Applications
+
+### 1. University Exam Scheduler (`bonus/exam_scheduler/`)
+
+A graphical application demonstrating a practical use of graph colouring for **exam timetabling**.
+
+**Problem:** Given student course registrations, schedule exams such that no student has two exams at the same time.
+
+**Graph Colouring Reduction:**
+- **Vertices**: Courses
+- **Edges**: Connect courses that share at least one student
+- **Colours**: Time slots
+- **Valid colouring**: Conflict-free exam schedule
+
+**Implementation:**
+- Modern Tkinter GUI with checkbox-based course selection
+- Pure Python implementations of DSatur and Exact solver
+- CSV import/export for student data and schedules
+- Real-time conflict visualization
+
+**Usage:**
+```bash
+cd bonus/exam_scheduler
+python3 exam_scheduler.py
+```
+
+**Files:**
+- `exam_scheduler.py` - Main application
+- `eg.csv`, `big-eg.csv` - Sample student registration data
+- `exam_scheduler_report.pdf` - Detailed report
+
+### 2. Maximum Clique Finder (`bonus/max_clique/`)
+
+Implements the **Bron-Kerbosch algorithm with pivoting** to find the maximum clique in a graph.
+
+**Relationship to Graph Colouring:**
+- The **clique number** ω(G) is the size of the largest complete subgraph
+- χ(G) ≥ ω(G) — the chromatic number is at least the clique number
+- If a colouring uses ω(G) colours, it is **provably optimal**
+- Provides a lower bound to validate colouring quality
+
+**Algorithm:** Bron-Kerbosch with pivot selection to minimize branching.
+
+**Build & Run:**
+```bash
+cd bonus/max_clique
+g++ -O3 -std=c++17 max_clique.cpp -o max_clique
+./max_clique ../../data/dimacs/myciel6.col
+```
+
+**Batch Experiments:**
+```bash
+python3 run_dimacs.py      # Run on all DIMACS graphs
+python3 run_generated.py   # Run on generated graphs
+```
+
+**Files:**
+- `max_clique.cpp` - C++ implementation
+- `run_dimacs.py`, `run_generated.py` - Batch runners
+- `results/` - Benchmark outputs
+- `max_clique_report.pdf` - Algorithm analysis report
+
+---
+
 ## Future Work
 
 - [ ] Benchmark Tabu Search extensively against other algorithms
