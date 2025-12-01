@@ -118,3 +118,10 @@ simulated_annealing,queen6_6,36,290,8,,0.864
 exact_solver,queen6_6,36,290,7,,3.360
 tabu_search,queen6_6,36,290,7,,11.625
 tabu_search,myciel3,11,20,4,,1.634
+tabu_search,queen11_11,121,1980,13,,109.750
+tabu_search,queen9_9,81,1056,11,,38.038
+tabu_search,flat300_20_0,300,21375,20,,20774.788
+tabu_search,myciel4,23,71,5,,3.405
+tabu_search,myciel6,95,755,7,,23.941
+tabu_search,myciel5,47,236,6,,8.883
+genetic,myciel4,23,71,5,,44.556
