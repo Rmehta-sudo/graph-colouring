@@ -125,3 +125,7 @@ tabu_search,myciel4,23,71,5,,3.405
 tabu_search,myciel6,95,755,7,,23.941
 tabu_search,myciel5,47,236,6,,8.883
 genetic,myciel4,23,71,5,,44.556
+dsatur,myciel5,47,236,6,,0.464
+dsatur,myciel5,47,236,6,,0.205
+dsatur,myciel5,47,236,6,,0.295
+dsatur,myciel5,47,236,6,,0.173
