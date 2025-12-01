@@ -13,10 +13,12 @@ Features:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from typing import Dict, List, Set
 from collections import defaultdict
 import time
+import csv
+import os
 
 # ============================================================================
 # GRAPH COLORING ALGORITHMS
@@ -203,6 +205,7 @@ class ModernExamScheduler:
         self.courses: List[str] = []
         self.students: Dict[str, List[str]] = {}
         self.course_checkboxes: Dict[str, tk.BooleanVar] = {}
+        self.last_schedule: Dict[int, List[str]] = {}  # Store generated schedule for export
         
         self._setup_styles()
         self._create_ui()
@@ -569,7 +572,29 @@ class ModernExamScheduler:
         left_btns = ttk.Frame(bar, style="Dark.TFrame")
         left_btns.pack(side="left")
         
-        sample_btn = tk.Button(left_btns, text="📋 Load Sample Data",
+        # Import CSV button
+        import_btn = tk.Button(left_btns, text="📥 Import CSV",
+                               font=("Segoe UI", 10),
+                               bg=Colors.ACCENT,
+                               fg=Colors.BG_DARK,
+                               relief="flat",
+                               cursor="hand2",
+                               command=self._import_csv)
+        import_btn.pack(side="left", padx=(0, 10), ipady=10, ipadx=15)
+        self._add_hover_effect(import_btn, Colors.ACCENT, "#33e5ff")
+        
+        # Export CSV button
+        export_btn = tk.Button(left_btns, text="� Export Schedule",
+                               font=("Segoe UI", 10),
+                               bg=Colors.WARNING,
+                               fg=Colors.BG_DARK,
+                               relief="flat",
+                               cursor="hand2",
+                               command=self._export_csv)
+        export_btn.pack(side="left", padx=(0, 10), ipady=10, ipadx=15)
+        self._add_hover_effect(export_btn, Colors.WARNING, "#ffda44")
+        
+        sample_btn = tk.Button(left_btns, text="📋 Load Sample",
                                font=("Segoe UI", 10),
                                bg=Colors.BG_LIGHT,
                                fg=Colors.TEXT_PRIMARY,
@@ -618,6 +643,115 @@ class ModernExamScheduler:
         g = int(int(hex_color[2:4], 16) * factor)
         b = int(int(hex_color[4:6], 16) * factor)
         return f"#{r:02x}{g:02x}{b:02x}"
+    
+    def _import_csv(self):
+        """Import student-course mappings from a CSV file.
+        
+        Expected format: Each line is: student_name,course1,course2,course3,...
+        Example:
+            Alice,MATH301,PHY102,CS101
+            Bob,PHY102,CHEM201
+        """
+        filepath = filedialog.askopenfilename(
+            title="Import Student Enrollments",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            initialdir=os.getcwd()
+        )
+        
+        if not filepath:
+            return
+        
+        try:
+            imported_students = {}
+            all_courses = set()
+            
+            with open(filepath, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for row_num, row in enumerate(reader, 1):
+                    if not row or not row[0].strip():
+                        continue  # Skip empty rows
+                    
+                    # First column is student name, rest are courses
+                    student_name = row[0].strip()
+                    courses = [c.strip().upper() for c in row[1:] if c.strip()]
+                    
+                    if not courses:
+                        self._log(f"Warning: Row {row_num} - No courses for '{student_name}'")
+                        continue
+                    
+                    imported_students[student_name] = courses
+                    all_courses.update(courses)
+            
+            if not imported_students:
+                messagebox.showwarning("Empty File", "No valid data found in the CSV file.")
+                return
+            
+            # Clear current data and load imported data
+            self._clear_all()
+            
+            # Add all courses
+            for course in sorted(all_courses):
+                self.courses.append(course)
+                self.course_listbox.insert(tk.END, f"  {course}")
+            
+            # Add all students
+            self.students = imported_students
+            self._update_checkboxes()
+            self._update_student_display()
+            
+            self._log(f"Imported {len(imported_students)} students, {len(all_courses)} courses from {os.path.basename(filepath)}")
+            messagebox.showinfo("Import Successful", 
+                               f"Imported:\n• {len(imported_students)} students\n• {len(all_courses)} courses")
+            
+        except Exception as e:
+            messagebox.showerror("Import Error", f"Failed to import CSV:\n{str(e)}")
+            self._log(f"ERROR importing CSV: {e}")
+    
+    def _export_csv(self):
+        """Export the generated schedule to a CSV file.
+        
+        Output format: Each line is: Slot N,course1,course2,...
+        Example:
+            Slot 1,MATH301,BIO301
+            Slot 2,PHY102,ENG101
+            Slot 3,CS101,CHEM201
+        """
+        if not self.last_schedule:
+            messagebox.showwarning("No Schedule", 
+                                  "Please generate a schedule first before exporting.")
+            return
+        
+        filepath = filedialog.asksaveasfilename(
+            title="Export Exam Schedule",
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            initialfile="exam_schedule.csv",
+            initialdir=os.getcwd()
+        )
+        
+        if not filepath:
+            return
+        
+        try:
+            with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                
+                # Write header
+                writer.writerow(["Timeslot", "Courses"])
+                
+                # Write each slot
+                for slot in sorted(self.last_schedule.keys()):
+                    courses = self.last_schedule[slot]
+                    row = [f"Slot {slot + 1}"] + courses
+                    writer.writerow(row)
+            
+            self._log(f"Exported schedule to {os.path.basename(filepath)}")
+            messagebox.showinfo("Export Successful", 
+                               f"Schedule exported to:\n{filepath}")
+            
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export CSV:\n{str(e)}")
+            self._log(f"ERROR exporting CSV: {e}")
     
     def _update_checkboxes(self):
         """Update the course checkboxes based on current courses"""
@@ -734,6 +868,7 @@ class ModernExamScheduler:
         """Clear all data"""
         self.courses.clear()
         self.students.clear()
+        self.last_schedule.clear()
         self.course_listbox.delete(0, tk.END)
         self.student_listbox.delete(0, tk.END)
         self._update_checkboxes()
@@ -802,7 +937,7 @@ class ModernExamScheduler:
             self._log(f"Built graph: {n} vertices, {edges} edges")
             
             # Choose algorithm
-            if n < 8:
+            if n < 14:
                 algo = "Exact Solver (Optimal)"
                 self._log(f"Using {algo}...")
                 start = time.time()
@@ -846,6 +981,9 @@ class ModernExamScheduler:
         timeslots: Dict[int, List[str]] = defaultdict(list)
         for i, color in enumerate(colors):
             timeslots[color].append(self.courses[i])
+        
+        # Store for export
+        self.last_schedule = dict(timeslots)
         
         # Layout
         padding = 20
