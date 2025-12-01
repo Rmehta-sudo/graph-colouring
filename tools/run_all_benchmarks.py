@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
-"""
-Run all algorithms (welsh_powell, dsatur, simulated_annealing, genetic, exact_solver)
-over a set of DIMACS graphs with timeout and retry, aggregating results into a single CSV.
+"""Run all graph colouring algorithms over a set of DIMACS graphs.
+
+This script automates benchmarking of multiple graph colouring algorithms
+(welsh_powell, dsatur, simulated_annealing, genetic, tabu_search, exact_solver)
+over a collection of graph files with configurable timeouts and retry logic.
 
 Policy:
-- First pass: timeout 15s per (graph, algo). If timeout -> defer.
-- Second pass: retry deferred with timeout 30s. If timeout again -> record status "timeout>45s".
-- On non-zero exit (other errors) -> record status "error".
+- First pass: timeout per (graph, algo) based on algorithm defaults
+- Second pass: retry deferred jobs with extended timeout
+- Timeout/error results are recorded with appropriate status
 
-Output: results/run_all_results.csv with schema:
-algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms,status
+Output Schema (results/run_all_results.csv):
+    algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms,status
+
+Example Usage:
+    python3 tools/run_all_benchmarks.py
+    python3 tools/run_all_benchmarks.py --include-generated
+    python3 tools/run_all_benchmarks.py --no-exact --algo-timeout genetic 240
 
 Notes:
-- Uses build/benchmark_runner. Ensure the binary exists (make all) before running.
-- Graphs are discovered under scripts/datasets/dimacs/*.col by default.
-- You can optionally include generated graphs via --include-generated.
+    - Requires build/benchmark_runner binary (run 'make all' first)
+    - Graphs discovered under data/dimacs/*.col by default
+    - Use --include-generated to also run on data/generated/*.col
 """
 from __future__ import annotations
 
@@ -72,7 +79,13 @@ HEADER = [
 METADATA_DIMACS = ROOT / "scripts" / "datasets" / "metadata-dimacs.csv"
 METADATA_GENERATED = ROOT / "scripts" / "datasets" / "metadata-generated.csv"
 
+
 def load_known_optimal() -> dict[str, int]:
+    """Load known optimal chromatic numbers from metadata CSV files.
+
+    Returns:
+        dict[str, int]: Mapping from graph name to known chromatic number.
+    """
     mapping: dict[str, int] = {}
     for meta in (METADATA_DIMACS, METADATA_GENERATED):
         if not meta.exists():
@@ -94,6 +107,12 @@ def load_known_optimal() -> dict[str, int]:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments including timeouts, graph selection,
+            and output file configuration.
+    """
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--include-generated",
@@ -152,11 +171,21 @@ def parse_args() -> argparse.Namespace:
 
 
 def ensure_dirs() -> None:
+    """Create required output directories if they don't exist."""
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     colourings_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def discover_graphs(include_generated: bool, explicit: List[str] | None) -> List[Path]:
+    """Discover graph files to process.
+
+    Args:
+        include_generated: Whether to include generated graphs.
+        explicit: Explicit list of graph paths (overrides auto-discovery).
+
+    Returns:
+        List[Path]: List of graph file paths to process.
+    """
     if explicit:
         return [Path(p) if Path(p).is_absolute() else ROOT / p for p in explicit]
     graphs = sorted(DIMACS_DIR.glob("*.col"))
@@ -166,6 +195,14 @@ def discover_graphs(include_generated: bool, explicit: List[str] | None) -> List
 
 
 def read_dimacs_header(path: Path) -> Tuple[int, int]:
+    """Read vertex and edge counts from a DIMACS graph file.
+
+    Args:
+        path: Path to the DIMACS .col file.
+
+    Returns:
+        Tuple[int, int]: (vertex_count, edge_count) extracted from the file.
+    """
     # Return (V, E) from p-line; if missing, best-effort parse
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -202,6 +239,12 @@ def read_dimacs_header(path: Path) -> Tuple[int, int]:
 
 
 def append_row(row: List[str], output_csv: Path) -> None:
+    """Append a result row to the output CSV file.
+
+    Args:
+        row: List of field values to write.
+        output_csv: Path to the output CSV file.
+    """
     new_file = not output_csv.exists() or output_csv.stat().st_size == 0
     with output_csv.open("a", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
@@ -211,7 +254,15 @@ def append_row(row: List[str], output_csv: Path) -> None:
 
 
 def parse_tmp_result() -> Tuple[str, str, str, str, str, str, str]:
-    # Returns tuple of 7 fields matching first 7 columns, else raises
+    """Parse the temporary result file from a single benchmark run.
+
+    Returns:
+        Tuple of 7 strings: (algorithm, graph_name, vertices, edges,
+            colors_used, known_optimal, runtime_ms).
+
+    Raises:
+        RuntimeError: If the temporary result file is empty.
+    """
     with TMP_RESULT.open("r", encoding="utf-8", newline="") as fh:
         r = csv.DictReader(fh)
         last = None
@@ -231,6 +282,17 @@ def parse_tmp_result() -> Tuple[str, str, str, str, str, str, str]:
 
 
 def run_one(graph_path: Path, algo: str, timeout_s: float) -> Tuple[bool, str]:
+    """Run a single benchmark (graph, algorithm) with timeout.
+
+    Args:
+        graph_path: Path to the graph file.
+        algo: Name of the algorithm to run.
+        timeout_s: Timeout in seconds.
+
+    Returns:
+        Tuple[bool, str]: (success, reason) where success is True if completed
+            successfully, and reason is 'ok', 'timeout', or 'error'.
+    """
     graph_name = graph_path.stem
     output_path = colourings_DIR / f"{graph_name}_{algo}.col"
     # Use a temporary results file to capture a single row for aggregation
@@ -255,6 +317,11 @@ def run_one(graph_path: Path, algo: str, timeout_s: float) -> Tuple[bool, str]:
 
 
 def main() -> int:
+    """Main entry point for the benchmark runner script.
+
+    Returns:
+        int: Exit code (0 on success, non-zero on error).
+    """
     args = parse_args()
     ensure_dirs()
 

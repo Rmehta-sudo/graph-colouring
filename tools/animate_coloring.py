@@ -123,6 +123,12 @@ Graph path argument:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the animation script.
+
+    Returns:
+        argparse.Namespace: Parsed arguments including graph, algorithm,
+            animation settings, and algorithm-specific tuning parameters.
+    """
     # Check for --full-help before argparse validation
     if "--full-help" in sys.argv:
         print_full_help()
@@ -163,6 +169,18 @@ def parse_args() -> argparse.Namespace:
 
 
 def resolve_graph_path_and_name(arg: str) -> tuple[Path, str]:
+    """Resolve a graph argument to an absolute path and graph name.
+
+    Args:
+        arg: Graph identifier (bare name, relative path, or absolute path).
+
+    Returns:
+        tuple[Path, str]: (absolute_path, graph_name) where graph_name is
+            the stem of the filename without extension.
+
+    Raises:
+        FileNotFoundError: If the graph file cannot be found.
+    """
     p = Path(arg)
     # Absolute path
     if p.is_absolute():
@@ -197,7 +215,15 @@ def resolve_graph_path_and_name(arg: str) -> tuple[Path, str]:
 
 
 def read_graph(path: Path) -> Tuple[int, List[Tuple[int,int]]]:
-    """Return (vertex_count, edges) with 0-based vertices."""
+    """Read a DIMACS graph file and extract vertices and edges.
+
+    Args:
+        path: Path to the DIMACS .col file.
+
+    Returns:
+        Tuple[int, List[Tuple[int,int]]]: (vertex_count, edges) where edges
+            are 0-indexed tuples (u, v).
+    """
     v_count = 0
     edges: List[Tuple[int,int]] = []
     with path.open("r", encoding="utf-8") as f:
@@ -226,6 +252,20 @@ def read_graph(path: Path) -> Tuple[int, List[Tuple[int,int]]]:
 
 
 def load_snapshots(algo: str, graph_name: str) -> List[List[int]]:
+    """Load colouring snapshots from a snapshot file.
+
+    Args:
+        algo: Name of the algorithm.
+        graph_name: Name of the graph.
+
+    Returns:
+        List[List[int]]: List of frames, where each frame is a list of
+            colour assignments (-1 for uncoloured vertices).
+
+    Raises:
+        FileNotFoundError: If snapshot file doesn't exist.
+        RuntimeError: If no frames could be parsed from the file.
+    """
     snap_path = SNAP_DIR / f"{algo}-{graph_name}-snapshots.txt"
     if not snap_path.exists():
         raise FileNotFoundError(f"Snapshots file not found: {snap_path}. Run benchmark_runner with --save-snapshots first.")
@@ -247,7 +287,18 @@ def load_snapshots(algo: str, graph_name: str) -> List[List[int]]:
 
 
 def generate_snapshots_if_needed(algo: str, graph_name: str, graph_file: Path, args: argparse.Namespace) -> None:
-    """Run the C++ benchmark runner to produce snapshot file if missing or empty."""
+    """Run the C++ benchmark runner to produce snapshot file if missing or empty.
+
+    Args:
+        algo: Name of the algorithm.
+        graph_name: Name of the graph.
+        graph_file: Path to the graph file.
+        args: Parsed command-line arguments (for algorithm-specific settings).
+
+    Raises:
+        FileNotFoundError: If the benchmark runner binary doesn't exist.
+        RuntimeError: If the runner exits with non-zero code or fails to create snapshots.
+    """
     snap_path = SNAP_DIR / f"{algo}-{graph_name}-snapshots.txt"
     if snap_path.exists() and snap_path.stat().st_size > 0:
         return
@@ -278,10 +329,31 @@ def generate_snapshots_if_needed(algo: str, graph_name: str, graph_file: Path, a
 
 
 def circular_layout(n: int) -> List[Tuple[float,float]]:
+    """Generate a circular layout for n vertices.
+
+    Args:
+        n: Number of vertices.
+
+    Returns:
+        List[Tuple[float,float]]: List of (x, y) coordinates on a unit circle.
+    """
     angle_step = 2 * math.pi / n if n else 0
     return [(math.cos(i * angle_step), math.sin(i * angle_step)) for i in range(n)]
 
+
 def spring_layout(n: int, edges: List[Tuple[int,int]], seed: int) -> List[Tuple[float,float]]:
+    """Generate a spring (force-directed) layout for a graph.
+
+    Falls back to circular layout if networkx is not available.
+
+    Args:
+        n: Number of vertices.
+        edges: List of edge tuples (u, v).
+        seed: Random seed for reproducibility.
+
+    Returns:
+        List[Tuple[float,float]]: List of (x, y) coordinates normalized to [-1, 1].
+    """
     if nx is None:
         return circular_layout(n)
     G = nx.Graph()
@@ -299,6 +371,17 @@ def spring_layout(n: int, edges: List[Tuple[int,int]], seed: int) -> List[Tuple[
 
 
 def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str, seed: int, edges: List[Tuple[int,int]], manual: bool):
+    """Animate a single algorithm's colouring progression.
+
+    Args:
+        frames: List of colour assignment frames.
+        interval: Seconds between frames.
+        repeat: Whether to loop the animation.
+        layout: Layout strategy ('spring' or 'circular').
+        seed: Random seed for layout.
+        edges: List of graph edges.
+        manual: Whether to use manual stepping mode.
+    """
     n = len(frames[0])
     if layout == 'spring':
         pos = spring_layout(n, edges, seed)
@@ -384,6 +467,18 @@ def animate(frames: List[List[int]], interval: float, repeat: bool, layout: str,
 
 def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_interval: float | None,
                   repeat: bool, layout: str, seed: int, edges: List[Tuple[int,int]], manual: bool):
+    """Animate multiple algorithms side-by-side in a grid.
+
+    Args:
+        frames_map: Dictionary mapping algorithm name to list of frames.
+        interval: Default seconds between frames.
+        sa_interval: Override interval for simulated_annealing (can be None).
+        repeat: Whether to loop the animation.
+        layout: Layout strategy ('spring' or 'circular').
+        seed: Random seed for layout.
+        edges: List of graph edges.
+        manual: Whether to use manual stepping mode.
+    """
     algos = list(frames_map.keys())
     max_len = max(len(frames) for frames in frames_map.values())
     n_vertices = {a: len(frames_map[a][0]) for a in algos}
@@ -529,7 +624,15 @@ def animate_multi(frames_map: Dict[str, List[List[int]]], interval: float, sa_in
         plt.show()
 
 
-def main() -> int:\
+def main() -> int:
+    """Main entry point for the animation script.
+
+    Parses arguments, resolves graph path, generates/loads snapshots,
+    and runs the animation.
+
+    Returns:
+        int: Exit code (0 on success).
+    """\
     # Disable Matplotlib's default 'q' key
     plt.rcParams['keymap.quit'] = []
     

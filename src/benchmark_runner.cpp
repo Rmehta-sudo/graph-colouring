@@ -1,3 +1,18 @@
+/**
+ * @file benchmark_runner.cpp
+ * @brief Command-line interface for running graph colouring algorithms.
+ *
+ * This file provides a CLI tool for executing various graph colouring algorithms
+ * on DIMACS-format graph files. Features include:
+ * - Multiple algorithm support (welsh_powell, dsatur, genetic, simulated_annealing, exact_solver)
+ * - Colouring output to file
+ * - Benchmark results logging to CSV
+ * - Optional snapshot generation for animation
+ * - Automatic known-optimal lookup from metadata files
+ *
+ * Usage: benchmark_runner --algorithm NAME --input FILE [options]
+ */
+
 #include "utils.h"
 
 #include "algorithms/genetic.h"
@@ -20,23 +35,34 @@
 
 namespace graph_colouring {
 
+/**
+ * @brief Command-line options for the benchmark runner.
+ */
 struct Options {
-	std::string algorithm;
-	std::string input_path;
-	std::string output_path;
-	std::string results_path;
-	std::string graph_name;
-	std::optional<int> known_optimal;
-    bool save_snapshots{false};
+	std::string algorithm;         ///< Name of the algorithm to run
+	std::string input_path;        ///< Path to input graph file (DIMACS format)
+	std::string output_path;       ///< Path to write colouring output
+	std::string results_path;      ///< Path to append benchmark results CSV
+	std::string graph_name;        ///< Identifier for the graph in results
+	std::optional<int> known_optimal;  ///< Known chromatic number (if available)
+    bool save_snapshots{false};    ///< Whether to save per-step snapshots
 	// Genetic algorithm tuning (optional)
-	int population_size{64};
-	int max_generations{500};
-	double mutation_rate{0.02};
+	int population_size{64};       ///< Population size for genetic algorithm
+	int max_generations{500};      ///< Maximum generations for genetic algorithm
+	double mutation_rate{0.02};    ///< Mutation rate for genetic algorithm
 };
 
 namespace {
-// Try to read known optimal from metadata CSV if not provided.
-// Looks for scripts/datasets/metadata-dimacs.csv and matches by graph_name (with or without .col).
+
+/**
+ * @brief Look up known optimal chromatic number from metadata CSV files.
+ *
+ * Searches metadata files for the given graph name and returns
+ * the known optimal value if found.
+ *
+ * @param graph_name Name of the graph (with or without .col extension).
+ * @return std::optional<int> Known chromatic number, or nullopt if not found.
+ */
 std::optional<int> lookup_known_optimal_from_metadata(const std::string &graph_name) {
 	const std::vector<std::filesystem::path> candidates = {
 		std::filesystem::path("scripts/datasets/metadata-dimacs.csv"),
@@ -79,6 +105,12 @@ std::optional<int> lookup_known_optimal_from_metadata(const std::string &graph_n
 	return std::nullopt;
 }
 
+/**
+ * @brief Parse a string as an optional integer.
+ * @param value String to parse.
+ * @return std::optional<int> Parsed integer, or nullopt if empty.
+ * @throws std::invalid_argument If string is non-empty but not a valid integer.
+ */
 std::optional<int> parse_optional_int(const std::string &value) {
 	if (value.empty()) {
 		return std::nullopt;
@@ -92,6 +124,14 @@ std::optional<int> parse_optional_int(const std::string &value) {
 
 }  // namespace
 
+/**
+ * @brief Parse command-line arguments into Options struct.
+ *
+ * @param argc Argument count.
+ * @param argv Argument values.
+ * @return Options Parsed command-line options.
+ * @throws std::invalid_argument If required arguments are missing or invalid.
+ */
 Options parse_arguments(int argc, char **argv) {
 	Options options;
 	for (int i = 1; i < argc; ++i) {
@@ -159,6 +199,10 @@ Options parse_arguments(int argc, char **argv) {
 
 namespace {
 
+/**
+ * @brief Build a mapping from algorithm names to their execution functions.
+ * @return std::unordered_map Mapping of algorithm name to colouring function.
+ */
 std::unordered_map<std::string, std::function<std::vector<int>(const Graph &)>>
 build_algorithm_table() {
 	return {
@@ -170,6 +214,11 @@ build_algorithm_table() {
 	};
 }
 
+/**
+ * @brief Count the number of distinct colours used in a colouring.
+ * @param colours Colour assignment vector.
+ * @return int Number of colours used (max_colour + 1).
+ */
 int count_colours(const std::vector<int> &colours) {
 	int max_colour = -1;
 	for (int colour : colours) {
@@ -184,6 +233,16 @@ int count_colours(const std::vector<int> &colours) {
 
 }  // namespace graph_colouring
 
+/**
+ * @brief Main entry point for the benchmark runner.
+ *
+ * Parses command-line arguments, loads the input graph, runs the specified
+ * algorithm, and outputs results to the specified destinations.
+ *
+ * @param argc Argument count.
+ * @param argv Argument values.
+ * @return int Exit code (0 on success, 1 on error).
+ */
 int main(int argc, char **argv) {
 	using namespace graph_colouring;
 

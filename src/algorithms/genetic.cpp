@@ -1,3 +1,15 @@
+/**
+ * @file genetic.cpp
+ * @brief Implementation of Genetic Algorithm for graph colouring.
+ * 
+ * Features an optimized evolutionary approach with:
+ * - GPX-lite crossover for combining parent solutions
+ * - Conflict-focused mutation targeting problematic vertices
+ * - Adaptive mutation rate decay
+ * - Greedy repair to ensure palette constraints
+ * - Iterative palette reduction for colour minimization
+ */
+
 #include "genetic.h"
 #include <algorithm>
 #include <numeric>
@@ -9,23 +21,24 @@
 
 namespace graph_colouring {
 
-// -----------------------------------------------------------------------------
-// Genetic Algorithm (Optimized Version)
-// Includes GPX-lite crossover, conflict-focused mutation, adaptive mutation rate,
-// warm-start seeding between palette runs, and greedy elite refinement.
-// -----------------------------------------------------------------------------
-
 namespace {
 
-// ---------- helper struct ----------
+/**
+ * @struct Individual
+ * @brief Represents a candidate solution in the genetic algorithm population.
+ */
 struct Individual {
-    std::vector<int> colours;
-    int conflicts{};
-    int colour_usage{};
-    long long fitness{}; // lower is better
+    std::vector<int> colours;  ///< Colour assignment for each vertex
+    int conflicts{};           ///< Number of edge conflicts in this solution
+    int colour_usage{};        ///< Number of distinct colours used
+    long long fitness{};       ///< Fitness score (lower is better)
 };
 
-// ---------- basic graph helpers ----------
+/**
+ * @brief Computes the maximum degree in the graph.
+ * @param graph The input graph.
+ * @return int Maximum vertex degree.
+ */
 int max_degree(const Graph &graph) {
     int result = 0;
     for (const auto &neighbours : graph.adjacency_list)
@@ -33,12 +46,23 @@ int max_degree(const Graph &graph) {
     return result;
 }
 
+/**
+ * @brief Counts the number of distinct colours used in a colouring.
+ * @param colours The colour assignment vector.
+ * @return int Number of colours (max_colour + 1).
+ */
 int count_colour_usage(const std::vector<int> &colours) {
     int max_colour = -1;
     for (int colour : colours) max_colour = std::max(max_colour, colour);
     return max_colour >= 0 ? (max_colour + 1) : 0;
 }
 
+/**
+ * @brief Counts the total number of edge conflicts in a colouring.
+ * @param graph The input graph.
+ * @param colours The colour assignment vector.
+ * @return int Number of edges where both endpoints have the same colour.
+ */
 int count_conflicts(const Graph &graph, const std::vector<int> &colours) {
     int conflicts = 0;
     for (int u = 0; u < graph.vertex_count; ++u) {
@@ -50,22 +74,52 @@ int count_conflicts(const Graph &graph, const std::vector<int> &colours) {
     return conflicts;
 }
 
+/**
+ * @brief Computes fitness score for an individual (lower is better).
+ * 
+ * Conflicts are heavily penalized (scaled by n²) to prioritize valid solutions.
+ * 
+ * @param conflicts Number of edge conflicts.
+ * @param colour_usage Number of colours used.
+ * @param n Number of vertices.
+ * @return long long Fitness score.
+ */
 long long compute_fitness(int conflicts, int colour_usage, int n) {
-    // Penalize conflicts very heavily (scale by n^2)
     return static_cast<long long>(conflicts) * n * n + colour_usage;
 }
 
+/**
+ * @brief Evaluates an individual by computing conflicts, colour usage, and fitness.
+ * @param ind The individual to evaluate (modified in place).
+ * @param graph The input graph.
+ */
 void evaluate(Individual &ind, const Graph &graph) {
     ind.conflicts = count_conflicts(graph, ind.colours);
     ind.colour_usage = count_colour_usage(ind.colours);
     ind.fitness = compute_fitness(ind.conflicts, ind.colour_usage, graph.vertex_count);
 }
 
+/**
+ * @brief Compares two individuals by fitness (for sorting).
+ * @param a First individual.
+ * @param b Second individual.
+ * @return true if a has better (lower) fitness than b.
+ */
 bool better_individual(const Individual &a, const Individual &b) {
     return a.fitness < b.fitness;
 }
 
-// ---------- crossover ----------
+/**
+ * @brief Performs GPX-lite crossover between two parents.
+ * 
+ * Each gene (vertex colour) is inherited from a randomly chosen parent.
+ * 
+ * @param a First parent.
+ * @param b Second parent.
+ * @param rng Random number generator.
+ * @param palette Maximum colour value + 1.
+ * @return Individual Child solution.
+ */
 Individual crossover_gpxlite(const Individual &a, const Individual &b, std::mt19937 &rng, int palette) {
     const int n = static_cast<int>(a.colours.size());
     Individual child;
@@ -81,7 +135,18 @@ Individual crossover_gpxlite(const Individual &a, const Individual &b, std::mt19
     return child;
 }
 
-// ---------- mutation ----------
+/**
+ * @brief Performs conflict-focused mutation on an individual.
+ * 
+ * With probability mutation_rate, selects a random vertex and changes its
+ * colour to the one that minimizes conflicts with neighbours.
+ * 
+ * @param ind The individual to mutate (modified in place).
+ * @param graph The input graph.
+ * @param rng Random number generator.
+ * @param palette Maximum colour value + 1.
+ * @param mutation_rate Probability of applying mutation.
+ */
 void mutate_conflict_focused(Individual &ind, const Graph &graph, std::mt19937 &rng, int palette, double mutation_rate) {
     if (ind.colours.empty()) return;
     std::uniform_real_distribution<double> prob(0.0, 1.0);
@@ -108,7 +173,15 @@ void mutate_conflict_focused(Individual &ind, const Graph &graph, std::mt19937 &
     }
 }
 
-// ---------- tournament selection ----------
+/**
+ * @brief Selects an individual from the population using tournament selection.
+ * 
+ * Randomly samples tournament_size individuals and returns the one with best fitness.
+ * 
+ * @param population The current population.
+ * @param rng Random number generator.
+ * @return const Individual& Reference to the selected individual.
+ */
 const Individual &tournament_select(const std::vector<Individual> &population, std::mt19937 &rng) {
     std::uniform_int_distribution<std::size_t> pick(0, population.size() - 1);
     const Individual *best = nullptr;
@@ -120,7 +193,17 @@ const Individual &tournament_select(const std::vector<Individual> &population, s
     return *best;
 }
 
-// ---------- greedy repair ----------
+/**
+ * @brief Repairs a colouring to use at most palette_k colours using greedy approach.
+ * 
+ * Processes vertices in degree order, preferring seed colours when conflict-free.
+ * Falls back to smallest available colour or random if all colours conflict.
+ * 
+ * @param graph The input graph.
+ * @param seed Initial colour suggestions (may be ignored if they cause conflicts).
+ * @param palette_k Maximum number of colours to use.
+ * @return std::vector<int> Repaired colour assignment using at most palette_k colours.
+ */
 std::vector<int> greedy_repair_fixed_k(const Graph &graph, const std::vector<int> &seed, int palette_k) {
     static thread_local std::mt19937 rng(std::random_device{}());
     const int n = graph.vertex_count;

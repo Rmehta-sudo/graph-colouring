@@ -1,3 +1,15 @@
+/**
+ * @file exact_solver.cpp
+ * @brief Branch-and-bound exact solver for optimal graph colouring.
+ *
+ * This file implements an exact backtracking algorithm with DSATUR-based
+ * vertex selection and branch-and-bound pruning. The algorithm:
+ * - Uses DSATUR to obtain an initial upper bound
+ * - Applies backtracking with saturation-based vertex ordering
+ * - Prunes branches that cannot improve the current best solution
+ * - Reports progress periodically for long-running instances
+ */
+
 #include "exact_solver.h"
 #include "dsatur.h"
 
@@ -13,12 +25,28 @@
 namespace graph_colouring {
 namespace {
 
+/**
+ * @brief Count the number of distinct colours used in a colouring.
+ * @param colours Colour assignment vector.
+ * @return int Number of colours used (max_colour + 1).
+ */
 int count_colours(const std::vector<int> &colours) {
 	int max_colour = -1;
 	for (int c : colours) max_colour = std::max(max_colour, c);
 	return max_colour >= 0 ? (max_colour + 1) : 0;
 }
 
+/**
+ * @brief Select the next uncoloured vertex using DSATUR heuristic.
+ *
+ * Chooses the uncoloured vertex with highest saturation (number of distinct
+ * colours among neighbours). Ties are broken by degree.
+ *
+ * @param g The input graph.
+ * @param colours Current colour assignment (-1 for uncoloured).
+ * @param current_max_colour Highest colour index used so far.
+ * @return int Index of selected vertex, or -1 if all vertices are coloured.
+ */
 int select_vertex(const Graph &g, const std::vector<int> &colours, int current_max_colour) {
 	const int n = g.vertex_count;
 	int best = -1;
@@ -47,6 +75,9 @@ int select_vertex(const Graph &g, const std::vector<int> &colours, int current_m
 	return best;
 }
 
+/**
+ * @brief State for tracking and reporting solver progress.
+ */
 struct ProgressState {
 	std::chrono::steady_clock::time_point start_time{std::chrono::steady_clock::now()};
 	std::chrono::steady_clock::time_point last_report{start_time};
@@ -54,6 +85,14 @@ struct ProgressState {
 	double interval_sec{5.0};
 };
 
+/**
+ * @brief Report progress if enough time has elapsed since last report.
+ * @param state Progress tracking state.
+ * @param coloured_count Number of vertices currently coloured.
+ * @param current_max_colour Highest colour index in current partial solution.
+ * @param best_k Best complete colouring found so far.
+ * @param n Total number of vertices.
+ */
 void maybe_report(ProgressState &state,
 				  int coloured_count,
 				  int current_max_colour,
@@ -72,6 +111,20 @@ void maybe_report(ProgressState &state,
 	state.last_report = now;
 }
 
+/**
+ * @brief Recursive backtracking function for exact graph colouring.
+ *
+ * Explores the search space by assigning colours to vertices in DSATUR order,
+ * pruning branches that cannot improve the current best solution.
+ *
+ * @param g The input graph.
+ * @param colours Current partial colour assignment.
+ * @param coloured_count Number of vertices coloured so far.
+ * @param current_max_colour Highest colour index used in current assignment.
+ * @param best_k Best number of colours found (updated on improvement).
+ * @param best_solution Best complete colouring found (updated on improvement).
+ * @param progress Progress tracking state.
+ */
 void backtrack_exact(const Graph &g,
 					 std::vector<int> &colours,
 					 int coloured_count,

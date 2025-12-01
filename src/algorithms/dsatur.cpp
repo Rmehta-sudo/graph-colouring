@@ -1,4 +1,12 @@
-// DSATUR heuristic graph colouring (priority-queue based)
+/**
+ * @file dsatur.cpp
+ * @brief Implementation of DSatur (Degree of Saturation) graph colouring algorithm.
+ * 
+ * DSatur is a greedy heuristic that maintains saturation degrees (count of
+ * distinct colours among neighbours) and prioritizes vertices with highest
+ * saturation. Uses a balanced BST (std::set) for efficient vertex selection.
+ */
+
 #include "dsatur.h"
 
 #include <algorithm>
@@ -10,13 +18,27 @@
 
 namespace graph_colouring {
 
+/**
+ * @struct NodeInfo
+ * @brief Stores vertex information for priority queue ordering in DSatur.
+ */
 struct NodeInfo {
-	int sat;    // saturation degree (distinct neighbour colours)
-	int deg;    // degree in the uncoloured subgraph
-	int v;      // vertex index (0-based)
+	int sat;    ///< Saturation degree (number of distinct neighbour colours)
+	int deg;    ///< Degree in the uncoloured subgraph
+	int v;      ///< Vertex index (0-based)
 };
 
+/**
+ * @struct MaxSatCmp
+ * @brief Comparator for DSatur priority: max saturation, then max degree, then min vertex ID.
+ */
 struct MaxSatCmp {
+	/**
+	 * @brief Compares two NodeInfo objects for priority ordering.
+	 * @param a First node.
+	 * @param b Second node.
+	 * @return true if a has higher priority than b.
+	 */
 	bool operator()(const NodeInfo &a, const NodeInfo &b) const {
 		if (a.sat != b.sat) return a.sat > b.sat;       // higher saturation first
 		if (a.deg != b.deg) return a.deg > b.deg;       // then higher degree
@@ -24,6 +46,16 @@ struct MaxSatCmp {
 	}
 };
 
+/**
+ * @brief Colours a graph using the DSatur heuristic algorithm.
+ * 
+ * Implementation uses a std::set with custom comparator for O(log V) vertex
+ * selection and update operations. Total complexity is O(V² + E) in worst case
+ * due to saturation updates.
+ * 
+ * @param graph The input graph to colour.
+ * @return std::vector<int> Colour assignments (0-indexed).
+ */
 std::vector<int> colour_with_dsatur(const Graph &graph) {
 	const int n = graph.vertex_count;
 	if (n == 0) return {};

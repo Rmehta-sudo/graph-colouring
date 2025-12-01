@@ -1,3 +1,11 @@
+/**
+ * @file graph_writer.cpp
+ * @brief Implementation of graph colouring solution output.
+ * 
+ * Writes colouring solutions in DIMACS-compatible format for verification
+ * and result storage.
+ */
+
 #include "../utils.h"
 
 #include <fstream>
@@ -5,6 +13,20 @@
 
 namespace graph_colouring {
 
+/**
+ * @brief Writes a graph colouring solution to a file.
+ * 
+ * Output format:
+ * - Comment line with generation info
+ * - Problem line: 'p edge <V> <E>'
+ * - Vertex-colour lines: 'v <vertex> <colour>' (1-indexed vertices)
+ * 
+ * @param path Filesystem path for the output file.
+ * @param graph The original graph (provides vertex/edge counts).
+ * @param colors Vector of colour assignments (0-indexed colours, 0-indexed vertices).
+ * @throws std::runtime_error If file cannot be opened for writing.
+ * @throws std::invalid_argument If colours vector size doesn't match vertex count.
+ */
 void write_coloring(const std::string &path, const Graph &graph, const std::vector<int> &colors) {
 	if (static_cast<int>(colors.size()) != graph.vertex_count) {
 		throw std::invalid_argument("Colour vector size does not match vertex count");

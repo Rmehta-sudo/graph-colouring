@@ -1,15 +1,18 @@
-// TabuCol: Tabu Search metaheuristic for graph colouring
-// 
-// Strategy:
-// 1. Start with a random k-colouring (may have conflicts)
-// 2. Iteratively select a conflicting vertex and move it to a colour that
-//    minimizes conflicts (even if still > 0)
-// 3. Mark the move (vertex, old_colour) as "tabu" for a tenure period to
-//    prevent cycling back immediately
-// 4. Accept the best non-tabu move; allow tabu moves only if they achieve
-//    a new global best (aspiration criterion)
-// 5. If zero conflicts achieved, decrease k and restart
-// 6. Stop when no feasible k-colouring found within iteration limit
+/**
+ * @file tabu.cpp
+ * @brief TabuCol: Tabu Search metaheuristic for graph colouring.
+ *
+ * Strategy:
+ * 1. Start with a random k-colouring (may have conflicts)
+ * 2. Iteratively select a conflicting vertex and move it to a colour that
+ *    minimizes conflicts (even if still > 0)
+ * 3. Mark the move (vertex, old_colour) as "tabu" for a tenure period to
+ *    prevent cycling back immediately
+ * 4. Accept the best non-tabu move; allow tabu moves only if they achieve
+ *    a new global best (aspiration criterion)
+ * 5. If zero conflicts achieved, decrease k and restart
+ * 6. Stop when no feasible k-colouring found within iteration limit
+ */
 
 #include "tabu.h"
 
@@ -24,7 +27,12 @@
 
 namespace {
 
-// Count total conflicts in the colouring
+/**
+ * @brief Count total conflicts in the colouring.
+ * @param graph The input graph.
+ * @param colours Current colour assignment vector.
+ * @return int Total number of conflicting edges (pairs of adjacent same-coloured vertices).
+ */
 int count_conflicts(const graph_colouring::Graph &graph, const std::vector<int> &colours) {
     int conflicts = 0;
     const int n = graph.vertex_count;
@@ -37,7 +45,13 @@ int count_conflicts(const graph_colouring::Graph &graph, const std::vector<int> 
     return conflicts;
 }
 
-// Count conflicts involving a specific vertex
+/**
+ * @brief Count conflicts involving a specific vertex.
+ * @param graph The input graph.
+ * @param colours Current colour assignment vector.
+ * @param vertex The vertex to check.
+ * @return int Number of neighbours with the same colour.
+ */
 int count_conflicts_for_vertex(const graph_colouring::Graph &graph, 
                                const std::vector<int> &colours, 
                                int vertex) {
@@ -49,7 +63,14 @@ int count_conflicts_for_vertex(const graph_colouring::Graph &graph,
     return conf;
 }
 
-// Count how many conflicts a vertex would have if assigned to colour c
+/**
+ * @brief Count how many conflicts a vertex would have if assigned to colour c.
+ * @param graph The input graph.
+ * @param colours Current colour assignment vector.
+ * @param vertex The vertex to evaluate.
+ * @param c The candidate colour.
+ * @return int Number of neighbours already coloured with c.
+ */
 int count_conflicts_if_colour(const graph_colouring::Graph &graph,
                               const std::vector<int> &colours,
                               int vertex, int c) {
@@ -60,7 +81,12 @@ int count_conflicts_if_colour(const graph_colouring::Graph &graph,
     return conf;
 }
 
-// Get all vertices currently in conflict
+/**
+ * @brief Get all vertices currently in conflict.
+ * @param graph The input graph.
+ * @param colours Current colour assignment vector.
+ * @return std::vector<int> List of vertex indices that have at least one same-coloured neighbour.
+ */
 std::vector<int> get_conflicting_vertices(const graph_colouring::Graph &graph,
                                           const std::vector<int> &colours) {
     std::vector<int> conflicting;
@@ -73,7 +99,11 @@ std::vector<int> get_conflicting_vertices(const graph_colouring::Graph &graph,
     return conflicting;
 }
 
-// Get maximum degree in the graph
+/**
+ * @brief Get maximum degree in the graph.
+ * @param graph The input graph.
+ * @return int Maximum vertex degree.
+ */
 int max_degree(const graph_colouring::Graph &graph) {
     int m = 0;
     for (const auto &nb : graph.adjacency_list) {
@@ -82,7 +112,18 @@ int max_degree(const graph_colouring::Graph &graph) {
     return m;
 }
 
-// Initialize a random k-colouring using greedy approach with randomization
+/**
+ * @brief Initialize a random k-colouring using greedy approach with randomization.
+ *
+ * Orders vertices by degree (high to low), then assigns each vertex the
+ * smallest available colour or, if all colours conflict, the one with
+ * minimum conflicts.
+ *
+ * @param graph The input graph.
+ * @param k Number of colours in the palette.
+ * @param rng Random number generator.
+ * @return std::vector<int> Initial colouring (may have conflicts).
+ */
 std::vector<int> initialize_colouring(const graph_colouring::Graph &graph, 
                                       int k, std::mt19937 &rng) {
     const int n = graph.vertex_count;

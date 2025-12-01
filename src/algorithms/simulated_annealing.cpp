@@ -1,3 +1,14 @@
+/**
+ * @file simulated_annealing.cpp
+ * @brief Implementation of Simulated Annealing metaheuristic for graph colouring.
+ *
+ * This file implements a simulated annealing approach to graph colouring that:
+ * - Starts with a greedy k-colouring (may have conflicts)
+ * - Uses probabilistic acceptance of worse solutions to escape local optima
+ * - Gradually decreases temperature to converge toward optimal
+ * - Iteratively tries decreasing palette sizes to minimize chromatic number
+ */
+
 #include "simulated_annealing.h"
 
 #include <stdexcept>
@@ -10,7 +21,13 @@
 #include <fstream>
 
 namespace {
-// small helpers local to this translation unit
+
+/**
+ * @brief Count total number of conflicts (adjacent vertices with same colour).
+ * @param graph The input graph.
+ * @param colours Current colour assignment vector.
+ * @return int Total number of conflicting edges.
+ */
 int count_conflicts(const graph_colouring::Graph &graph, const std::vector<int> &colours) {
 	int conflicts = 0;
 	const int n = graph.vertex_count;
@@ -23,6 +40,13 @@ int count_conflicts(const graph_colouring::Graph &graph, const std::vector<int> 
 	return conflicts;
 }
 
+/**
+ * @brief Count conflicts involving a specific vertex only.
+ * @param graph The input graph.
+ * @param colours Current colour assignment vector.
+ * @param vertex The vertex to check conflicts for.
+ * @return int Number of neighbours with the same colour as vertex.
+ */
 int count_conflicts_local(const graph_colouring::Graph &graph, const std::vector<int> &colours, int vertex) {
 	int conf = 0;
 	const int n = graph.vertex_count;
@@ -33,13 +57,28 @@ int count_conflicts_local(const graph_colouring::Graph &graph, const std::vector
 	return conf;
 }
 
+/**
+ * @brief Count the number of distinct colours used in a colouring.
+ * @param colours Colour assignment vector.
+ * @return int Number of colours used (max_colour + 1).
+ */
 int count_colour_usage(const std::vector<int> &colours) {
 	int maxc = -1;
 	for (int c : colours) maxc = std::max(maxc, c);
 	return maxc >= 0 ? (maxc + 1) : 0;
 }
 
-// Greedy repair that respects palette_k (copied-in style from genetic helper but slimmed)
+/**
+ * @brief Greedy repair algorithm that respects a fixed palette size.
+ *
+ * Attempts to assign colours from a seed colouring, falling back to
+ * conflict-minimizing choices when no valid colour is available.
+ *
+ * @param graph The input graph.
+ * @param seed Initial colour suggestions (may be invalid).
+ * @param palette_k Maximum number of colours allowed.
+ * @return std::vector<int> Repaired colouring using at most palette_k colours.
+ */
 std::vector<int> greedy_repair_fixed_k(const graph_colouring::Graph &graph, const std::vector<int> &seed, int palette_k) {
 	const int n = graph.vertex_count;
 	std::vector<int> order(n);
@@ -90,6 +129,11 @@ std::vector<int> greedy_repair_fixed_k(const graph_colouring::Graph &graph, cons
 	return colours;
 }
 
+/**
+ * @brief Find the maximum degree in the graph.
+ * @param graph The input graph.
+ * @return int Maximum vertex degree.
+ */
 int max_degree(const graph_colouring::Graph &graph) {
 	int m = 0;
 	for (const auto &nb : graph.adjacency_list) m = std::max<int>(m, static_cast<int>(nb.size()));

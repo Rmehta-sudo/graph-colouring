@@ -1,3 +1,11 @@
+/**
+ * @file welsh_powell.cpp
+ * @brief Implementation of Welsh-Powell greedy graph colouring algorithm.
+ * 
+ * Welsh-Powell sorts vertices by degree and assigns colours greedily.
+ * Simple and fast, but may use more colours than DSatur on many graphs.
+ */
+
 #include "welsh_powell.h"
 #include <algorithm>
 #include <vector>
@@ -7,6 +15,19 @@
 
 namespace graph_colouring {
 
+/**
+ * @brief Colours a graph using the Welsh-Powell greedy algorithm.
+ * 
+ * Implementation:
+ * 1. Create vertex ordering by descending degree
+ * 2. For each uncoloured vertex in order:
+ *    a. Assign current colour to this vertex
+ *    b. Assign same colour to all subsequent compatible vertices
+ *    c. Increment colour counter
+ * 
+ * @param graph The input graph to colour.
+ * @return std::vector<int> Colour assignments (0-indexed).
+ */
 std::vector<int> colour_with_welsh_powell(const Graph &graph) {
     const int n = graph.vertex_count;
     if (n == 0) return {};

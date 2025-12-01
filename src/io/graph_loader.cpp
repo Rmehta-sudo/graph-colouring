@@ -1,3 +1,11 @@
+/**
+ * @file graph_loader.cpp
+ * @brief Implementation of DIMACS graph file parser.
+ * 
+ * Parses the standard DIMACS edge format used by graph colouring benchmarks.
+ * Handles various comment styles and validates input format.
+ */
+
 #include "../utils.h"
 
 #include <algorithm>
@@ -7,6 +15,25 @@
 
 namespace graph_colouring {
 
+/**
+ * @brief Loads a graph from a DIMACS-format .col file.
+ * 
+ * File format:
+ * - Comment lines: start with 'c', '%', or '#' (ignored)
+ * - Problem line: 'p edge <V> <E>' declares vertex and edge counts
+ * - Edge lines: 'e <u> <v>' declares an undirected edge (1-indexed)
+ * 
+ * Processing:
+ * - Converts 1-indexed vertices to 0-indexed
+ * - Removes self-loops (u == v)
+ * - Removes duplicate edges
+ * - Builds symmetric adjacency list (edge added to both endpoints)
+ * 
+ * @param path Filesystem path to the .col file.
+ * @return Graph The loaded graph with adjacency list representation.
+ * @throws std::runtime_error If file cannot be opened, format is invalid,
+ *                            or edge references out-of-range vertices.
+ */
 Graph load_graph(const std::string &path) {
 	std::ifstream input(path);
 	if (!input.is_open()) {
