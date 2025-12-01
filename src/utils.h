@@ -7,19 +7,19 @@
 namespace graph_colouring {
 
 struct Graph {
-	int vertex_count = 0;
-	int edge_count = 0;
-	std::vector<std::vector<int>> adjacency_list;
+int vertex_count = 0;
+int edge_count = 0;
+std::vector<std::vector<int>> adjacency_list;
 };
 
 struct BenchmarkResult {
-	std::string algorithm_name;
-	std::string graph_name;
-	int vertex_count = 0;
-	int edge_count = 0;
-	int color_count = 0;
-	std::optional<int> known_optimal;
-	double runtime_ms = 0.0;
+std::string algorithm_name;
+std::string graph_name;
+int vertex_count = 0;
+int edge_count = 0;
+int color_count = 0;
+std::optional<int> known_optimal;
+double runtime_ms = 0.0;
 };
 
 // IO

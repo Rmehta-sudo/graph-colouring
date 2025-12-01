@@ -2,115 +2,173 @@
 
 Benchmark, compare, and analyze graph colouring algorithms on DIMACS and generated datasets. The suite provides a C++ runner that handles I/O, timing, and CSV logging, plus a Python orchestrator to run all algorithms across many graphs with timeouts and retries.
 
-## Build
+## Algorithms Implemented
 
-- Requirements: g++ with C++20, Python 3.8+
-- Build the runner binary:
-	- make all
-	- Output: `build/benchmark_runner`
+| Algorithm | Type | Time Complexity | Description |
+|-----------|------|-----------------|-------------|
+| Welsh-Powell | Greedy | O(V log V + E) | Degree-ordered greedy |
+| DSatur | Greedy | O(V² + E) | Saturation-based greedy |
+| Simulated Annealing | Metaheuristic | Configurable | Temperature-based optimization |
+| Genetic Algorithm | Metaheuristic | O(P × G × V) | Evolutionary approach |
+| Tabu Search | Metaheuristic | O(I × V × k) | TabuCol with conflict repair |
+| Exact Solver | Exact | Exponential | Branch & bound (small graphs) |
 
-## Run a single algorithm
+## Quick Start
 
-The runner loads a DIMACS graph, dispatches the chosen algorithm, writes the colouring, and appends a CSV row with metrics.
+```bash
+# Build
+make all
 
-Example via Makefile targets (change `GRAPH=...`):
+# Run single algorithm
+make run-dsatur GRAPH=dimacs/myciel6.col
+make run-tabu GRAPH=dimacs/myciel6.col
 
-- make run-dsatur GRAPH=dimacs/myciel6.col
-- make run-exact GRAPH=dimacs/myciel6.col
+# Run all benchmarks
+make run-all-benchmarking
 
-Direct CLI:
-
-- build/benchmark_runner --algorithm dsatur --input scripts/datasets/dimacs/myciel6.col --output results/raw/myciel6_dsatur.col --results results/results.csv --graph-name myciel6
-
-CLI options:
-
-- --algorithm NAME          One of: welsh_powell, dsatur, simulated_annealing, genetic, exact_solver
-- --input FILE              Path to DIMACS .col graph
-- --output FILE             Where to write the colouring
-- --results FILE            CSV to append metrics
-- --graph-name NAME         Override graph identifier in CSV and filenames
-- --known-optimal VALUE     Known chromatic number (optional; auto-filled from metadata when possible)
-
-## End-to-end flow
-
-Minimal data flow from graph file to outputs:
-
-```mermaid
-flowchart LR
-    G[DIMACS .col file (p edge V E + e u v)] --> LG[load_graph() → Graph{V,E,adj}]
-    LG --> D{dispatch algorithm name}
-    D --> A[algorithm fn (const Graph&)->vector<int>(colours size=V)]
-    A --> W[write_coloring() .col output\nv i color]
-    A --> M[metrics build\ncolor_count,runtime_ms]
-    MD[metadata CSVs\nknown_optimal] --> M
-    M --> KO[known_optimal fill 
-    CLI or lookup]
-    KO --> CSV[append_result_csv() results.csv row]
+# Animate algorithm progress
+python3 tools/animate_coloring.py --graph myciel6 --algo dsatur
 ```
 
-## Function reference (I/O contracts)
+## Build
 
-Namespace: `graph_colouring`
+**Requirements:** g++ with C++20, Python 3.8+, matplotlib, networkx (for animation)
 
-Core I/O:
-- load_graph(path) -> Graph
-- write_coloring(path, graph, colors)
-- append_result_csv(path, BenchmarkResult)
+```bash
+make all           # Build benchmark_runner
+make clean         # Clean build artifacts
+```
 
-Algorithms (all: (const Graph&) -> std::vector<int>):
-- colour_with_welsh_powell
-- colour_with_dsatur
-- colour_with_simulated_annealing
-- colour_with_genetic
-- colour_with_exact (env: EXACT_PROGRESS_INTERVAL for progress)
+## Usage
 
-Metadata helper:
-- lookup_known_optimal_from_metadata(name) -> std::optional<int>
+### Single Algorithm Run
 
-## CSV outputs
+```bash
+# Via Makefile (recommended)
+make run-dsatur GRAPH=dimacs/myciel6.col
+make run-tabu GRAPH=generated/tree_275_4.col SNAPSHOTS=1
 
-- Per-run CSV (`results/results.csv`):
-	- Header: `algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms`
-	- known_optimal is taken from CLI if provided, else auto-filled from metadata files when available
+# Direct CLI
+./build/benchmark_runner \
+    --algorithm tabu_search \
+    --input data/dimacs/myciel6.col \
+    --output results/colourings/myciel6_tabu.col \
+    --results results/results.csv \
+    --graph-name myciel6 \
+    --save-snapshots
+```
 
-- Batch aggregate CSV (`results/run_all_results.csv`):
-	- Header: `algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms,status`
-	- Status values: `ok`, `ok(retry)`, `timeout>45s`, `error`, and `ok(no-parse)` variants
+**CLI Options:**
 
-## Run all benchmarks (timeouts + retry)
+| Option | Description |
+|--------|-------------|
+| `--algorithm NAME` | welsh_powell, dsatur, simulated_annealing, genetic, tabu_search, exact_solver |
+| `--input FILE` | Path to DIMACS .col graph |
+| `--output FILE` | Where to write the colouring |
+| `--results FILE` | CSV to append metrics |
+| `--graph-name NAME` | Override graph identifier |
+| `--save-snapshots` | Save per-iteration state for animation |
 
-The Python orchestrator runs all algorithms over a set of graphs with robust timeouts and status reporting.
+### Batch Benchmarking
 
-- make run-all-benchmarking
-	- Builds if needed; runs `scripts/run_all_benchmarks.py --include-generated`
-	- First pass timeout: 15s per job; retry timeouts with 30s; if still timing out, marks `timeout>45s`
-	- Output: colouring files in `results/raw/` and aggregate CSV at `results/run_all_results.csv`
+```bash
+# Run all algorithms on all graphs
+make run-all-benchmarking
 
-You can call the script directly for custom runs:
+# Custom run
+python3 tools/run_all_benchmarks.py \
+    --graphs data/dimacs/myciel6.col data/dimacs/queen6_6.col \
+    --first-timeout 15 \
+    --second-timeout 30
+```
 
-- python3 scripts/run_all_benchmarks.py --graphs scripts/datasets/dimacs/myciel6.col scripts/datasets/dimacs/queen6_6.col --first-timeout 10 --second-timeout 20
+### Animation
 
-Order of algorithms per graph:
+Visualize algorithm progress:
 
-1) welsh_powell → 2) dsatur → 3) simulated_annealing → 4) genetic → 5) exact_solver
+```bash
+python3 tools/animate_coloring.py --graph myciel6 --algo dsatur
+python3 tools/animate_coloring.py --graph myciel6 --algo tabu_search --interval 0.05
+python3 tools/animate_coloring.py --graph myciel6 --all-algos  # Compare all
+```
 
-## Environment variables
+## Project Structure
 
-- EXACT_PROGRESS_INTERVAL
-	- Controls stderr progress print interval in seconds for the exact solver
-	- Valid range: 0.05 to 600; default 5.0
+```
+graph-colouring/
+├── README.md
+├── Makefile
+│
+├── src/                        # C++ source code
+│   ├── benchmark_runner.cpp    # Main CLI entry point
+│   ├── utils.h                 # Core types (Graph, BenchmarkResult)
+│   ├── algorithms/             # Colouring algorithms
+│   │   ├── dsatur.cpp/.h
+│   │   ├── welsh_powell.cpp/.h
+│   │   ├── genetic.cpp/.h
+│   │   ├── simulated_annealing.cpp/.h
+│   │   ├── tabu.cpp/.h
+│   │   └── exact_solver.cpp/.h
+│   └── io/                     # File I/O utilities
+│       ├── graph_loader.cpp/.h
+│       ├── graph_writer.cpp/.h
+│       └── results_logger.cpp/.h
+│
+├── tools/                      # Python tools
+│   ├── run_all_benchmarks.py   # Batch runner with timeouts
+│   ├── animate_coloring.py     # Algorithm visualization
+│   ├── generate_graphs.py      # Synthetic graph generator
+│   └── analysis/               # Result analysis scripts
+│
+├── data/                       # Graph datasets
+│   ├── dimacs/                 # DIMACS benchmark graphs
+│   ├── generated/              # Synthetic test graphs
+│   ├── network-repo/           # Network repository graphs
+│   ├── metadata-dimacs.csv
+│   └── metadata-generated.csv
+│
+├── results/                    # Benchmark outputs
+│   ├── colourings/             # Per-run colouring files
+│   ├── results.csv             # Single-run metrics
+│   └── run_all_results.csv     # Batch run aggregate
+│
+├── output/                     # Generated outputs
+│   ├── snapshots/              # Algorithm state snapshots
+│   └── animations/             # Animation videos
+│
+├── docs/                       # Documentation
+│   ├── PROJECT_SUMMARY.md      # Detailed project documentation
+│   ├── code-spec.md            # Code specifications
+│   └── references/             # Academic papers
+│
+├── legacy/                     # Old/utility scripts
+│
+└── build/                      # Compiled binaries (gitignored)
+```
 
-## Project layout (selected)
+## Output Format
 
-- src/
-	- benchmark_runner.cpp: CLI parsing, algorithm dispatch, timing, metadata lookup, CSV logging
-	- algorithms/: colouring implementations (dsatur, genetic, exact_solver; others scaffolded)
-	- io/: `graph_loader.cpp`, `graph_writer.cpp`, `results_logger.cpp`
-	- utils.h: Graph and BenchmarkResult types and I/O declarations
-- scripts/
-	- run_all_benchmarks.py: batch runner with timeouts, retries, status aggregation
-	- datasets/: DIMACS and generated graphs, plus metadata CSVs
-- results/
-	- raw/: per-run colouring outputs `*.col`
-	- results.csv: ad-hoc runs
-	- run_all_results.csv: aggregated batch results
+### Results CSV
+
+```csv
+algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms
+dsatur,myciel6,95,755,7,7,0.234
+tabu_search,myciel6,95,755,7,7,45.123
+```
+
+### Status Values (Batch Runs)
+
+- `ok` - Completed successfully
+- `ok(retry)` - Completed on second attempt
+- `timeout>45s` - Exceeded timeout limits
+- `error` - Non-zero exit code
+
+## Documentation
+
+- **[USAGE.md](docs/USAGE.md)** - Comprehensive usage guide with all commands
+- **[PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)** - Detailed project documentation
+- **[code-spec.md](docs/code-spec.md)** - Technical specifications
+
+## License
+
+AAD Coursework Project - Semester 3
