@@ -5,7 +5,6 @@
 #include "algorithms/dsatur.h"
 #include "algorithms/simulated_annealing.h"
 #include "algorithms/exact_solver.h"
-#include "algorithms/tabu.h"
 
 #include <chrono>
 #include <filesystem>
@@ -33,11 +32,6 @@ struct Options {
 	int population_size{64};
 	int max_generations{500};
 	double mutation_rate{0.02};
-
-	// Simulated Annealing tuning (optional)
-	std::string sa_mode{"default"}; // default, heavy, precision, speed
-	double sa_initial_temp{1.0};
-	int sa_iter_mult{50};
 };
 
 namespace {
@@ -133,29 +127,18 @@ Options parse_arguments(int argc, char **argv) {
 			options.mutation_rate = std::stod(require_value(arg));
 			if (options.mutation_rate < 0.0) options.mutation_rate = 0.0;
 			if (options.mutation_rate > 1.0) options.mutation_rate = 1.0;
-		} else if (arg == "--sa-mode") {
-			options.sa_mode = require_value(arg);
-		} else if (arg == "--sa-initial-temp") {
-			options.sa_initial_temp = std::stod(require_value(arg));
-		} else if (arg == "--sa-iter-mult") {
-			options.sa_iter_mult = std::stoi(require_value(arg));
 		} else if (arg == "--help" || arg == "-h") {
 			std::cout << "Usage: benchmark_runner --algorithm NAME --input FILE [options]\n"
-					  << "  Algorithms: welsh_powell, dsatur, simulated_annealing, genetic, exact_solver, tabu_search\n"
 					  << "  Options:\n"
 					  << "    --output FILE           Write colouring to FILE\n"
 					  << "    --results FILE          Append metrics to FILE\n"
 					  << "    --graph-name NAME       Override graph identifier\n"
 					  << "    --known-optimal VALUE   Known chromatic number\n"
-					  << "    --save-snapshots        Write per-iteration/epoch snapshots (supported by all algorithms)\n"
+					  << "    --save-snapshots        Write per-iteration/epoch snapshots (supported by dsatur, welsh_powell, genetic, simulated_annealing, exact_solver)\n"
 					  << "\n  Genetic algorithm tuning (when -a genetic):\n"
 					  << "    --population-size N     Population size (default 64)\n"
 					  << "    --generations N         Max generations (default 500)\n"
-					  << "    --mutation-rate X       Mutation rate in [0,1] (default 0.02)\n"
-					  << "\n  Simulated Annealing tuning (when -a simulated_annealing):\n"
-					  << "    --sa-mode MODE          Mode: default, heavy, precision, speed\n"
-					  << "    --sa-initial-temp T     Initial temperature (default 1.0)\n"
-					  << "    --sa-iter-mult N        Iterations multiplier (default 50)\n";
+					  << "    --mutation-rate X       Mutation rate in [0,1] (default 0.02)\n";
 			std::exit(0);
 		} else {
 			throw std::invalid_argument("Unknown argument: " + arg);
@@ -184,7 +167,6 @@ build_algorithm_table() {
 		{"simulated_annealing", [](const Graph &graph) { return colour_with_simulated_annealing(graph); }},
 		{"genetic", [](const Graph &graph) { return colour_with_genetic(graph); }},
 		{"exact_solver", [](const Graph &graph) { return colour_with_exact(graph); }},
-		{"tabu_search", [](const Graph &graph) { return colour_with_tabu(graph); }},
 	};
 }
 
@@ -219,23 +201,9 @@ int main(int argc, char **argv) {
 
 		// Prepare snapshots path if requested and applicable
 		std::vector<int> colours;
-		
-		// Helper to build SA config
-		auto build_sa_config = [&]() {
-			SAConfig config;
-			if (options.sa_mode == "heavy") config.mode = SAMode::Heavy;
-			else if (options.sa_mode == "precision") config.mode = SAMode::Precision;
-			else if (options.sa_mode == "speed") config.mode = SAMode::Speed;
-			else config.mode = SAMode::Default;
-			
-			config.initial_temperature = options.sa_initial_temp;
-			config.iteration_multiplier = options.sa_iter_mult;
-			return config;
-		};
-
 		if (options.save_snapshots) {
-			std::filesystem::create_directories("output/snapshots");
-			const std::string snap_file = std::string("output/snapshots/") + options.algorithm + "-" + options.graph_name + "-snapshots.txt";
+			std::filesystem::create_directories("snapshots-colouring");
+			const std::string snap_file = std::string("snapshots-colouring/") + options.algorithm + "-" + options.graph_name + "-snnapshots.txt";
 			if (options.algorithm == "dsatur") {
 				colours = colour_with_dsatur_snapshots(graph, snap_file);
 			} else if (options.algorithm == "welsh_powell") {
@@ -243,19 +211,15 @@ int main(int argc, char **argv) {
 			} else if (options.algorithm == "genetic") {
 				colours = colour_with_genetic_snapshots(graph, snap_file, options.population_size, options.max_generations, options.mutation_rate);
 			} else if (options.algorithm == "simulated_annealing") {
-				colours = colour_with_simulated_annealing_snapshots(graph, snap_file, build_sa_config());
+				colours = colour_with_simulated_annealing_snapshots(graph, snap_file);
 			} else if (options.algorithm == "exact_solver") {
 				colours = colour_with_exact_snapshots(graph, snap_file);
-			} else if (options.algorithm == "tabu_search") {
-				colours = colour_with_tabu_snapshots(graph, snap_file);
 			} else {
 				colours = finder->second(graph);
 			}
 		} else {
 			if (options.algorithm == "genetic") {
 				colours = colour_with_genetic(graph, options.population_size, options.max_generations, options.mutation_rate);
-			} else if (options.algorithm == "simulated_annealing") {
-				colours = colour_with_simulated_annealing(graph, build_sa_config());
 			} else {
 				colours = finder->second(graph);
 			}
