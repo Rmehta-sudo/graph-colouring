@@ -23,7 +23,7 @@ OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 .PHONY: all clean run-genetic run-welsh run-dsatur run-exact run-sa run-tabu run-all-benchmarking help
 
 GRAPH ?= dimacs/myciel6.col
-GRAPH_PATH := scripts/datasets/$(GRAPH)
+GRAPH_PATH := data/$(GRAPH)
 GRAPH_FILE := $(notdir $(GRAPH))
 GRAPH_NAME := $(basename $(GRAPH_FILE))
 OUTPUT ?= results/colourings/$(GRAPH_NAME)_genetic.col
@@ -102,7 +102,7 @@ help:
 	@echo "  make run-exact  GRAPH=dimacs/myciel3.col EXACT_PROGRESS_INTERVAL=2 SNAPSHOTS=1"
 	@echo "  make run-tabu   GRAPH=dimacs/myciel3.col SNAPSHOTS=1"
 	@echo "Variables:"
-	@echo "  GRAPH=path relative to scripts/datasets/ (dimacs/, generated/, simple-tests/)"
+	@echo "  GRAPH=path relative to data/ (dimacs/, generated/, simple-tests/)"
 	@echo "  SNAPSHOTS=1 enables per-iteration snapshot recording"
 	@echo "  POPULATION_SIZE (genetic), GENERATIONS, MUTATION_RATE"
 	@echo "  EXACT_PROGRESS_INTERVAL (export before run-exact or pass via env)"
@@ -112,7 +112,7 @@ help:
 	@echo "  EXACT_PROGRESS_INTERVAL=5 make run-exact GRAPH=dimacs/myciel6.col"
 
 run-all-benchmarking: $(TARGET)
-	python3 scripts/run_all_benchmarks.py --include-generated
+	python3 tools/run_all_benchmarks.py --include-generated
 
 clean:
 	rm -rf $(BUILD_DIR)

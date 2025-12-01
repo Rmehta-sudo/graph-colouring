@@ -1,0 +1,25 @@
+# Build artifacts
+build/
+*.o
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Temporary files
+*.tmp
+tmp_*.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large generated outputs (optional - uncomment if needed)
+# output/animations/*.mp4
+# data/generated/*.col

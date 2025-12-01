@@ -1,0 +1,5 @@
+algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms
+genetic,anna,138,493,11,,301.541
+genetic,david,87,406,11,,211.260
+genetic,DSJC1000.1,1000,49629,31,,10238.554
+genetic,DSJC1000.5,1000,249826,127,,77949.365

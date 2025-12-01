@@ -1,3 +1,4 @@
+./build/benchmark_runner --algorithm dsatur --input data/dimacs/myciel6.col --save-snapshots
 family,algorithm,graphs,avg_vertices,avg_edges,avg_colors,avg_optimal,avg_ratio,max_ratio,avg_runtime_s,best_algo,best_avg_ratio
 DSJC,dsatur,12,468.75,82899.5,75.0,57.25,1.28826,1.37349,0.01604,dsatur,1.28826
 DSJC,genetic,9,347.22222,20342.44444,36.66667,28.22222,1.32403,1.5,5.60001,dsatur,1.28826

@@ -11,14 +11,14 @@ Supported algorithms (all snapshot-enabled):
 
 You can either pre-generate snapshots using the C++ runner or let this script
 invoke the runner automatically (default). Snapshot file pattern:
-    snapshots-colouring/<algo>-<graph>-snnapshots.txt
+    output/snapshots/<algo>-<graph>-snapshots.txt
 
 Basic usage examples:
-    python3 scripts/animate_coloring.py --graph myciel6 --algo dsatur
-    python3 scripts/animate_coloring.py --graph myciel6 --algo simulated_annealing --interval 0.05
-    python3 scripts/animate_coloring.py --graph myciel6 --algo genetic --population-size 128 --generations 800
-    python3 scripts/animate_coloring.py --graph myciel6 --algo exact_solver --exact-progress-interval 2.5
-    python3 scripts/animate_coloring.py --graph myciel6 --algo tabu_search
+    python3 tools/animate_coloring.py --graph myciel6 --algo dsatur
+    python3 tools/animate_coloring.py --graph myciel6 --algo simulated_annealing --interval 0.05
+    python3 tools/animate_coloring.py --graph myciel6 --algo genetic --population-size 128 --generations 800
+    python3 tools/animate_coloring.py --graph myciel6 --algo exact_solver --exact-progress-interval 2.5
+    python3 tools/animate_coloring.py --graph myciel6 --algo tabu_search
 
 Algorithm-specific optional flags when auto-running:
     genetic:
@@ -67,12 +67,12 @@ except Exception as e:
     raise
 
 ROOT = Path(__file__).resolve().parents[1]
-SNAP_DIR = ROOT / "snapshots-colouring"
-DATASETS_DIR = ROOT / "scripts" / "datasets"
-DIMACS_DIR = DATASETS_DIR / "dimacs"
-GENERATED_DIR = DATASETS_DIR / "generated"
-SIMPLE_TESTS_DIR = DATASETS_DIR / "simple-tests"
-NETWORK_REPO_DIR = DATASETS_DIR / "network-repo"
+SNAP_DIR = ROOT / "output" / "snapshots"
+DATA_DIR = ROOT / "data"
+DIMACS_DIR = DATA_DIR / "dimacs"
+GENERATED_DIR = DATA_DIR / "generated"
+SIMPLE_TESTS_DIR = DATA_DIR / "simple-tests"
+NETWORK_REPO_DIR = DATA_DIR / "network-repo"
 BENCH = ROOT / "build" / "benchmark_runner"
 
 PALETTE = list(mcolors.TABLEAU_COLORS.values()) + [
@@ -86,16 +86,16 @@ def print_full_help() -> None:
 Snapshot animation helper for 6 algorithms: dsatur, welsh_powell, genetic, simulated_annealing, exact_solver, tabu_search
 
 Basics:
-    python3 scripts/animate_coloring.py --graph myciel6 --algo dsatur
-    python3 scripts/animate_coloring.py --graph generated/flat300_20_0.col --algo simulated_annealing --interval 0.05
-    python3 scripts/animate_coloring.py --graph myciel3 --algo exact_solver --exact-progress-interval 2
-    python3 scripts/animate_coloring.py --graph myciel6 --algo tabu_search
+    python3 tools/animate_coloring.py --graph myciel6 --algo dsatur
+    python3 tools/animate_coloring.py --graph generated/flat300_20_0.col --algo simulated_annealing --interval 0.05
+    python3 tools/animate_coloring.py --graph myciel3 --algo exact_solver --exact-progress-interval 2
+    python3 tools/animate_coloring.py --graph myciel6 --algo tabu_search
 
 Run all algos side-by-side:
-    python3 scripts/animate_coloring.py --graph myciel6 --all-algos
+    python3 tools/animate_coloring.py --graph myciel6 --all-algos
 
 Manual stepping (advance on keypress):
-    python3 scripts/animate_coloring.py --graph myciel6 --algo genetic --manual
+    python3 tools/animate_coloring.py --graph myciel6 --algo genetic --manual
     Keys: enter/space/k/right = next, left/h = back, q/escape = quit
 
 Animation timing:
@@ -173,8 +173,8 @@ def resolve_graph_path_and_name(arg: str) -> tuple[Path, str]:
             if q.exists():
                 return q, q.stem
         raise FileNotFoundError(f"Graph file not found: {p}")
-    # Relative under datasets
-    rel = DATASETS_DIR / p
+    # Relative under data/
+    rel = DATA_DIR / p
     if p.parent != Path('.'):
         if rel.exists():
             return rel, rel.stem
@@ -182,7 +182,7 @@ def resolve_graph_path_and_name(arg: str) -> tuple[Path, str]:
             rel_col = rel.with_suffix(".col")
             if rel_col.exists():
                 return rel_col, rel_col.stem
-        raise FileNotFoundError(f"Graph not found under scripts/datasets/: {arg}")
+        raise FileNotFoundError(f"Graph not found under data/: {arg}")
     # Bare name
     name = p.stem if p.suffix == ".col" else str(p)
     for c in (
@@ -226,7 +226,7 @@ def read_graph(path: Path) -> Tuple[int, List[Tuple[int,int]]]:
 
 
 def load_snapshots(algo: str, graph_name: str) -> List[List[int]]:
-    snap_path = SNAP_DIR / f"{algo}-{graph_name}-snnapshots.txt"
+    snap_path = SNAP_DIR / f"{algo}-{graph_name}-snapshots.txt"
     if not snap_path.exists():
         raise FileNotFoundError(f"Snapshots file not found: {snap_path}. Run benchmark_runner with --save-snapshots first.")
     frames: List[List[int]] = []
@@ -248,7 +248,7 @@ def load_snapshots(algo: str, graph_name: str) -> List[List[int]]:
 
 def generate_snapshots_if_needed(algo: str, graph_name: str, graph_file: Path, args: argparse.Namespace) -> None:
     """Run the C++ benchmark runner to produce snapshot file if missing or empty."""
-    snap_path = SNAP_DIR / f"{algo}-{graph_name}-snnapshots.txt"
+    snap_path = SNAP_DIR / f"{algo}-{graph_name}-snapshots.txt"
     if snap_path.exists() and snap_path.stat().st_size > 0:
         return
     if not BENCH.exists():

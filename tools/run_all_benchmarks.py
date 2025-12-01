@@ -29,21 +29,34 @@ from typing import List, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCH = ROOT / "build" / "benchmark_runner"
-DIMACS_DIR = ROOT / "scripts" / "datasets" / "dimacs"
-GENERATED_DIR = ROOT / "scripts" / "datasets" / "generated"
+DIMACS_DIR = ROOT / "data" / "dimacs"
+GENERATED_DIR = ROOT / "data" / "generated"
 RESULTS_DIR = ROOT / "results"
 AGGREGATE_CSV = RESULTS_DIR / "run_all_results.csv"
 TMP_RESULT = RESULTS_DIR / "tmp_run.csv"
 colourings_DIR = RESULTS_DIR / "colourings"
 
+# Order: fast heuristics first, then metaheuristics, exact solver last
 ALGORITHMS = [
-    "welsh_powell",
     "dsatur",
+    "welsh_powell",
     "simulated_annealing",
-    "genetic",
     "tabu_search",
-    # "exact_solver",
+    "genetic",
 ]
+
+# Exact solver handled separately with its own timeout
+EXACT_SOLVER = "exact_solver"
+
+# Default timeouts per algorithm (can be overridden via CLI)
+DEFAULT_TIMEOUTS = {
+    "dsatur": 60.0,
+    "welsh_powell": 60.0,
+    "simulated_annealing": 120.0,
+    "tabu_search": 120.0,
+    "genetic": 180.0,
+    "exact_solver": 300.0,
+}
 
 HEADER = [
     "algorithm",
@@ -96,13 +109,44 @@ def parse_args() -> argparse.Namespace:
         "--first-timeout",
         type=float,
         default=150.0,
-        help="Seconds for first-pass timeout per job (default: 15)",
+        help="Default first-pass timeout per job in seconds (default: 150)",
     )
     p.add_argument(
         "--second-timeout",
         type=float,
         default=300.0,
-        help="Seconds for retry timeout per job (default: 30)",
+        help="Default retry timeout per job in seconds (default: 300)",
+    )
+    p.add_argument(
+        "--no-exact",
+        action="store_true",
+        help="Skip exact_solver algorithm entirely",
+    )
+    p.add_argument(
+        "--exact-timeout",
+        type=float,
+        default=300.0,
+        help="Timeout for exact_solver in seconds (default: 300)",
+    )
+    p.add_argument(
+        "--exact-max-vertices",
+        type=int,
+        default=500,
+        help="Max vertices for exact_solver (skip larger graphs, default: 500)",
+    )
+    p.add_argument(
+        "--algo-timeout",
+        action="append",
+        nargs=2,
+        metavar=("ALGO", "SECONDS"),
+        help="Set timeout for a specific algorithm, e.g. --algo-timeout genetic 240",
+    )
+    p.add_argument(
+        "--output-file",
+        "-o",
+        type=str,
+        default=None,
+        help="Custom output CSV filename (default: run_all_results.csv). Use e.g. 'dimacs_results.csv' or 'generated_results.csv'",
     )
     return p.parse_args()
 
@@ -157,9 +201,9 @@ def read_dimacs_header(path: Path) -> Tuple[int, int]:
     return V, E
 
 
-def append_row(row: List[str]) -> None:
-    new_file = not AGGREGATE_CSV.exists() or AGGREGATE_CSV.stat().st_size == 0
-    with AGGREGATE_CSV.open("a", encoding="utf-8", newline="") as fh:
+def append_row(row: List[str], output_csv: Path) -> None:
+    new_file = not output_csv.exists() or output_csv.stat().st_size == 0
+    with output_csv.open("a", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         if new_file:
             w.writerow(HEADER)
@@ -225,14 +269,35 @@ def main() -> int:
 
     known_map = load_known_optimal()
 
+    # Determine output CSV file
+    if args.output_file:
+        output_csv = RESULTS_DIR / args.output_file
+    else:
+        output_csv = AGGREGATE_CSV
+    
+    print(f"Results will be written to: {output_csv}")
+
+    # Build per-algorithm timeout map
+    algo_timeouts = dict(DEFAULT_TIMEOUTS)
+    if args.algo_timeout:
+        for algo_name, timeout_str in args.algo_timeout:
+            algo_timeouts[algo_name] = float(timeout_str)
+
     deferred: List[Tuple[Path, str]] = []
 
-    # First pass
-    for g in graphs:
-        for algo in ALGORITHMS:
+    # Run algorithm-by-algorithm (all graphs for one algo, then next algo)
+    # Order: dsatur, welsh_powell, simulated_annealing, tabu_search, genetic
+    for algo in ALGORITHMS:
+        timeout_first = algo_timeouts.get(algo, args.first_timeout)
+        timeout_second = algo_timeouts.get(algo, args.second_timeout)
+        print(f"\n{'='*60}")
+        print(f"Running {algo} on all graphs (timeout: {timeout_first}s)")
+        print(f"{'='*60}")
+        
+        for g in graphs:
             V, E = read_dimacs_header(g)
             name = g.stem
-            ok, reason = run_one(g, algo, args.first_timeout)
+            ok, reason = run_one(g, algo, timeout_first)
             if ok:
                 try:
                     a, gn, v, e, c, k, t = parse_tmp_result()
@@ -247,50 +312,112 @@ def main() -> int:
                             ko = known_map[meta_key_plain]
                         if ko is not None:
                             k = str(ko)
-                    append_row([a, gn, v, e, c, k, t, "ok"])
+                    append_row([a, gn, v, e, c, k, t, "ok"], output_csv)
+                    print(f"  ✓ {name}: {c} colors in {t}ms")
                 except Exception:
                     meta_key_with = name + '.col'
                     ko = known_map.get(meta_key_with) or known_map.get(name)
-                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "ok(no-parse)"])
+                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "ok(no-parse)"], output_csv)
+                    print(f"  ✓ {name}: completed (no parse)")
             else:
                 meta_key_with = name + '.col'
                 ko = known_map.get(meta_key_with) or known_map.get(name)
                 if reason == "timeout":
-                    print(f"Timeout (first pass): {name} with {algo}")
-                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "timeout(first-pass)"])
+                    print(f"  ⏱ {name}: timeout (first pass)")
+                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "timeout(first-pass)"], output_csv)
                     deferred.append((g, algo))
                 else:
-                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "error"]) 
+                    print(f"  ✗ {name}: error")
+                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "error"], output_csv) 
 
-    # Second pass (retry timeouts)
-    for g, algo in deferred:
-        V, E = read_dimacs_header(g)
-        name = g.stem
-        ok, reason = run_one(g, algo, args.second_timeout)
-        if ok:
-            try:
-                a, gn, v, e, c, k, t = parse_tmp_result()
-                if (not k) or k == "0":
-                    meta_key_with = gn if gn.endswith('.col') else gn + '.col'
-                    meta_key_plain = gn
-                    ko = None
-                    if meta_key_with in known_map:
-                        ko = known_map[meta_key_with]
-                    elif meta_key_plain in known_map:
-                        ko = known_map[meta_key_plain]
-                    if ko is not None:
-                        k = str(ko)
-                append_row([a, gn, v, e, c, k, t, "ok(retry)"])
-            except Exception:
+    # Second pass (retry timeouts) - grouped by algorithm
+    if deferred:
+        print(f"\n{'='*60}")
+        print(f"Retrying {len(deferred)} timed-out jobs...")
+        print(f"{'='*60}")
+        
+        for g, algo in deferred:
+            timeout_second = algo_timeouts.get(algo, args.second_timeout)
+            V, E = read_dimacs_header(g)
+            name = g.stem
+            ok, reason = run_one(g, algo, timeout_second)
+            if ok:
+                try:
+                    a, gn, v, e, c, k, t = parse_tmp_result()
+                    if (not k) or k == "0":
+                        meta_key_with = gn if gn.endswith('.col') else gn + '.col'
+                        meta_key_plain = gn
+                        ko = None
+                        if meta_key_with in known_map:
+                            ko = known_map[meta_key_with]
+                        elif meta_key_plain in known_map:
+                            ko = known_map[meta_key_plain]
+                        if ko is not None:
+                            k = str(ko)
+                    append_row([a, gn, v, e, c, k, t, "ok(retry)"], output_csv)
+                    print(f"  ✓ {name}/{algo}: {c} colors in {t}ms (retry)")
+                except Exception:
+                    meta_key_with = name + '.col'
+                    ko = known_map.get(meta_key_with) or known_map.get(name)
+                    append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "ok(retry,no-parse)"], output_csv)
+                    print(f"  ✓ {name}/{algo}: completed (retry, no parse)")
+            else:
                 meta_key_with = name + '.col'
                 ko = known_map.get(meta_key_with) or known_map.get(name)
-                append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "ok(retry,no-parse)"])
-        else:
-            meta_key_with = name + '.col'
-            ko = known_map.get(meta_key_with) or known_map.get(name)
-            append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "timeout>45s"]) 
+                append_row([algo, name, str(V), str(E), "", str(ko) if ko else "", "", "timeout>retry"], output_csv)
+                print(f"  ✗ {name}/{algo}: timeout after retry")
 
-    print(f"Aggregate written to {AGGREGATE_CSV}")
+    # Run exact_solver last (only if --no-exact is not set)
+    if not args.no_exact:
+        print(f"\n{'='*60}")
+        print(f"Running {EXACT_SOLVER} on eligible graphs (timeout: {args.exact_timeout}s, max vertices: {args.exact_max_vertices})")
+        print(f"{'='*60}")
+        
+        for g in graphs:
+            V, E = read_dimacs_header(g)
+            name = g.stem
+            
+            # Skip graphs that are too large for exact solver
+            if V > args.exact_max_vertices:
+                print(f"  ⊘ {name}: skipped (V={V} > {args.exact_max_vertices})")
+                meta_key_with = name + '.col'
+                ko = known_map.get(meta_key_with) or known_map.get(name)
+                append_row([EXACT_SOLVER, name, str(V), str(E), "", str(ko) if ko else "", "", "skipped(too-large)"], output_csv)
+                continue
+            
+            ok, reason = run_one(g, EXACT_SOLVER, args.exact_timeout)
+            if ok:
+                try:
+                    a, gn, v, e, c, k, t = parse_tmp_result()
+                    if (not k) or k == "0":
+                        meta_key_with = gn if gn.endswith('.col') else gn + '.col'
+                        meta_key_plain = gn
+                        ko = None
+                        if meta_key_with in known_map:
+                            ko = known_map[meta_key_with]
+                        elif meta_key_plain in known_map:
+                            ko = known_map[meta_key_plain]
+                        if ko is not None:
+                            k = str(ko)
+                    append_row([a, gn, v, e, c, k, t, "ok"], output_csv)
+                    print(f"  ✓ {name}: {c} colors in {t}ms")
+                except Exception:
+                    meta_key_with = name + '.col'
+                    ko = known_map.get(meta_key_with) or known_map.get(name)
+                    append_row([EXACT_SOLVER, name, str(V), str(E), "", str(ko) if ko else "", "", "ok(no-parse)"], output_csv)
+                    print(f"  ✓ {name}: completed (no parse)")
+            else:
+                meta_key_with = name + '.col'
+                ko = known_map.get(meta_key_with) or known_map.get(name)
+                if reason == "timeout":
+                    print(f"  ⏱ {name}: timeout ({args.exact_timeout}s)")
+                    append_row([EXACT_SOLVER, name, str(V), str(E), "", str(ko) if ko else "", "", "timeout"], output_csv)
+                else:
+                    print(f"  ✗ {name}: error")
+                    append_row([EXACT_SOLVER, name, str(V), str(E), "", str(ko) if ko else "", "", "error"], output_csv)
+
+    print(f"\n{'='*60}")
+    print(f"Aggregate written to {output_csv}")
     return 0
 
 

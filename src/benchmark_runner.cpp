@@ -205,8 +205,8 @@ int main(int argc, char **argv) {
 		// Prepare snapshots path if requested and applicable
 		std::vector<int> colours;
 		if (options.save_snapshots) {
-			std::filesystem::create_directories("snapshots-colouring");
-			const std::string snap_file = std::string("snapshots-colouring/") + options.algorithm + "-" + options.graph_name + "-snnapshots.txt";
+			std::filesystem::create_directories("output/snapshots");
+			const std::string snap_file = std::string("output/snapshots/") + options.algorithm + "-" + options.graph_name + "-snapshots.txt";
 			if (options.algorithm == "dsatur") {
 				colours = colour_with_dsatur_snapshots(graph, snap_file);
 			} else if (options.algorithm == "welsh_powell") {

@@ -33,8 +33,8 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument(
 		"--target",
 		type=Path,
-		default=Path("datasets/generated"),
-		help="Directory that receives generated .col files (default: datasets/generated)",
+		default=Path("data/generated"),
+		help="Directory that receives generated .col files (default: data/generated)",
 	)
 	parser.add_argument(
 		"--metadata",
