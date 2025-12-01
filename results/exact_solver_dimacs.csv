@@ -55,3 +55,6 @@ exact_solver,inithx.i.2,645,13979,,,,timeout>120.0s
 exact_solver,inithx.i.3,621,13969,,,,timeout>120.0s
 exact_solver,latin_square_10,900,307350,,,,timeout>120.0s
 exact_solver,le450_15a,450,8168,,,,timeout>120.0s
+exact_solver,le450_15b,450,8169,,,,timeout>120.0s
+exact_solver,le450_15c,450,16680,,,,timeout>120.0s
+exact_solver,le450_15d,450,16750,,,,timeout>120.0s
