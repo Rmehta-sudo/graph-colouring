@@ -1,6 +1,0 @@
-algorithm,graph_name,vertices,edges,colors_used,known_optimal,runtime_ms,status
-dsatur,cycle10,10,10,2,,0.008,ok
-welsh_powell,cycle10,10,10,2,,0.001,ok
-simulated_annealing,cycle10,10,10,2,,0.044,ok
-tabu_search,cycle10,10,10,2,,0.021,ok
-genetic,cycle10,10,10,2,,10.185,ok
